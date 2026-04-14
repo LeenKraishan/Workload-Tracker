@@ -1,0 +1,2448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Workload Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #f4f1ec;
+  --surface: #fff;
+  --surface2: #f9f7f4;
+  --border: #e5e0d8;
+  --border2: #d4cdc2;
+  --text: #1a1714;
+  --text2: #5c5650;
+  --muted: #9e9890;
+  --green: #2d8f5e; --green-bg: #e8f5ef;
+  --yellow: #b87d0e; --yellow-bg: #fef3db;
+  --red: #c0392b; --red-bg: #fdecea;
+  --blue: #2563b0; --blue-bg: #e8f0fc;
+  --orange: #c2500a; --orange-bg: #fef0e8;
+  --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* HEADER */
+.header {
+  background:var(--surface); border-bottom:1px solid var(--border);
+  padding:16px 36px; display:flex; align-items:center; justify-content:space-between;
+  box-shadow:var(--shadow); position:sticky; top:0; z-index:50;
+}
+.header-left { display:flex; align-items:center; gap:14px; }
+.logo { width:34px;height:34px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--bg);font-family:'Fraunces',serif;font-size:17px;font-weight:700; }
+.header-title { font-family:'Fraunces',serif;font-size:19px;font-weight:700;letter-spacing:-0.5px; }
+.header-date { font-size:12px;color:var(--muted);margin-top:1px; }
+.header-actions { display:flex;gap:10px;align-items:center; }
+
+.btn { font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:8px 15px;border-radius:8px;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text2);transition:all 0.15s;display:inline-flex;align-items:center;gap:6px; }
+.btn:hover { background:var(--surface2); }
+.btn-primary { background:var(--text);color:#fff;border-color:var(--text); }
+.btn-primary:hover { background:#2d2a26; }
+.btn-accent { background:var(--green-bg);color:var(--green);border-color:#b8dfc9; }
+.btn-accent:hover { background:#d4eee1; }
+.btn-sm { font-size:11px;padding:5px 10px; }
+.btn-danger { background:var(--red-bg);color:var(--red);border-color:#f5c4c0; }
+
+/* TABS */
+.tabs { display:flex;padding:0 36px;background:var(--surface);border-bottom:1px solid var(--border); }
+.tab { font-size:13px;font-weight:500;padding:12px 18px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all 0.15s;margin-bottom:-1px; }
+.tab.active { color:var(--text);border-bottom-color:var(--text); }
+.tab:hover:not(.active) { color:var(--text2); }
+
+.main { padding:26px 36px;max-width:1500px;margin:0 auto; }
+.view-content { width:100%; }
+
+/* SUMMARY CARDS */
+.summary-row { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px; }
+.card { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow); }
+.card-label { font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px; }
+.card-value { font-family:'Fraunces',serif;font-size:32px;font-weight:700;line-height:1; }
+.card-sub { font-size:12px;color:var(--muted);margin-top:5px; }
+.val-green{color:var(--green)} .val-yellow{color:var(--yellow)} .val-red{color:var(--red)} .val-blue{color:var(--blue)}
+
+/* SECTION HEADER */
+.section-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border); }
+.section-title { font-family:'Fraunces',serif;font-size:17px;font-weight:600; }
+.nav-controls { display:flex;align-items:center;gap:10px; }
+.nav-label { font-size:14px;font-weight:500;color:var(--text2);min-width:160px;text-align:center;display:inline-block; }
+.nav-btn { width:30px;height:30px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s; }
+.nav-btn:hover { background:var(--surface2); }
+
+/* LEGEND */
+.legend { display:flex;gap:16px;align-items:center; }
+.legend-item { display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2); }
+.ldot { width:10px;height:10px;border-radius:3px; }
+
+/* CHIPS */
+.chip { display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:0.4px; }
+.chip-green{background:var(--green-bg);color:var(--green)} .chip-yellow{background:var(--yellow-bg);color:var(--yellow)}
+.chip-red{background:var(--red-bg);color:var(--red)} .chip-gray{background:#f0ede9;color:var(--muted)}
+.chip-orange{background:var(--orange-bg);color:var(--orange)} .chip-blue{background:var(--blue-bg);color:var(--blue)}
+
+/* SPIKE BADGE */
+.spike-badge {
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:9px;font-weight:700;
+  background:#fff3cd;color:#856404;
+  border:1px solid #ffc107;
+  padding:1px 5px;border-radius:3px;
+  text-transform:uppercase;letter-spacing:0.3px;
+}
+
+/* WEEKLY GRID */
+.grid-wrap { background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow); }
+.grid-head { display:grid;grid-template-columns:220px repeat(7,1fr);background:var(--surface2);border-bottom:1px solid var(--border); }
+.year-head { display:grid;grid-template-columns:220px repeat(12,1fr);background:var(--surface2);border-bottom:1px solid var(--border); }
+.year-row  { display:grid;grid-template-columns:220px repeat(12,1fr);border-bottom:1px solid var(--border); }
+.year-cell { padding:10px 6px;border-right:1px solid var(--border);text-align:center;font-size:11px; }
+.year-cell:last-child { border-right:none; }
+.year-month-label { font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px; }
+.year-load-bar { height:4px;border-radius:2px;margin:3px auto;width:80%; }
+.gh-cell { padding:10px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;border-right:1px solid var(--border);text-align:center; }
+.gh-cell:first-child{text-align:left} .gh-cell.today-col{color:var(--green);background:var(--green-bg)} .gh-cell.weekend-col{color:#ccc;background:#f7f5f2}
+.g-row { display:grid;grid-template-columns:220px repeat(7,1fr);border-bottom:1px solid var(--border);transition:background 0.1s; }
+.g-row:last-child{border-bottom:none} .g-row:hover{background:#faf8f5}
+.person-cell { padding:12px 14px;border-right:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+.avatar { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0; }
+.p-name{font-size:13px;font-weight:600} .p-role{font-size:10px;color:var(--muted);margin-top:1px}
+.day-cell { padding:9px 11px;border-right:1px solid var(--border);cursor:pointer;transition:background 0.1s;min-height:80px;display:flex;flex-direction:column;justify-content:flex-start; }
+.day-cell:last-child{border-right:none} .day-cell.today-col{background:#f6fbf8} .day-cell:hover{background:#f0f7f4}
+.day-cell.weekend{background:#f7f5f2;cursor:default;pointer-events:none}
+.load-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.load-pct{font-size:13px;font-weight:700}
+.bar-wrap{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.3s}
+.load-proj{font-size:10px;color:var(--muted);line-height:1.5;word-break:break-word}
+.load-proj .proj-tag{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;margin:1px 2px 1px 0;white-space:nowrap;font-size:9px;font-weight:600}
+.weekend-label{font-size:10px;color:#ccc;font-style:italic;margin-top:6px}
+.add-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:color 0.15s;}
+.add-row:hover{color:var(--green)}
+
+/* PROJECTS VIEW */
+.proj-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px; }
+.proj-card { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);position:relative; }
+.proj-card-top { display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px; }
+.proj-name { font-family:'Fraunces',serif;font-size:16px;font-weight:700;margin-bottom:2px; }
+.proj-client { font-size:11px;color:var(--muted); }
+.proj-alloc-badge { font-family:'Fraunces',serif;font-size:22px;font-weight:700; }
+.proj-meta { display:flex;flex-direction:column;gap:6px;margin-bottom:12px; }
+.proj-meta-row { display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2); }
+.proj-meta-label { font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;min-width:70px; }
+.proj-team { display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border); }
+.proj-member-pill { display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 9px 3px 5px;font-size:11px;font-weight:500; }
+.proj-actions { display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border); }
+.timeline-bar-wrap { height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px; }
+.timeline-bar { height:100%;border-radius:3px;background:var(--blue); }
+
+/* MONTHLY CALENDAR */
+.cal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);background:var(--surface2);border-bottom:1px solid var(--border)}
+.cal-dow{padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;border-right:1px solid var(--border)}
+.cal-dow:last-child{border-right:none}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);min-height:110px}
+.cal-week:last-child{border-bottom:none}
+.cal-day{border-right:1px solid var(--border);padding:7px;cursor:pointer;transition:background 0.1s;position:relative}
+.cal-day:last-child{border-right:none} .cal-day:hover{background:#faf8f5} .cal-day.other-month{background:#faf8f5}
+.cal-day.other-month .cal-day-num{color:#ccc} .cal-day.today .cal-day-num{background:var(--green);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.cal-day-num{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.cal-avatars{display:flex;flex-wrap:wrap;gap:2px}
+.cal-person-pill{display:flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 5px 2px 3px;font-size:9px;font-weight:600;cursor:pointer;transition:all 0.1s;white-space:nowrap}
+.cal-person-pill:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+.cal-person-pill.has-spike{border-color:#ffc107;background:#fff9e6}
+.cal-person-pill.cal-pill-mine:hover{border-color:var(--green);box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+.cal-mini-av{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;flex-shrink:0}
+
+/* MY WORK */
+.mywork-grid { display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start; }
+.mywork-panel { }
+.mywork-col-label { font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;display:block; }
+
+/* FINDER */
+.finder-panel { }
+.finder-panel-top { background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:18px; }
+.finder-panel-body { }
+.finder-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px; }
+.finder-card { background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:all 0.15s; }
+.finder-card:hover { border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+.finder-avail { font-family:'Fraunces',serif;font-size:22px;font-weight:700;margin-bottom:4px; }
+.finder-projects { font-size:11px;color:var(--muted);line-height:1.6; }
+.threshold-val { font-size:14px;font-weight:700;color:var(--green);min-width:36px;display:inline-block; }
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(26,23,20,0.45);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:520px;max-width:95vw;padding:26px 28px;position:relative;box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto}
+.modal-close{position:absolute;top:14px;right:14px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--border)}
+.modal h2{font-family:'Fraunces',serif;font-size:18px;font-weight:700;margin-bottom:3px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:5px}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;border-radius:8px;outline:none;transition:border-color 0.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+select option{background:#fff}
+.slider-row{display:flex;align-items:center;gap:12px}
+.slider-row input[type=range]{flex:1;padding:0;height:6px;accent-color:var(--green);cursor:pointer}
+.slider-val{font-size:15px;font-weight:700;min-width:42px;text-align:right}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions .btn{flex:1;justify-content:center}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.info-box{background:var(--blue-bg);border:1px solid #c5d8f5;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--blue);margin-bottom:14px;line-height:1.5}
+.warn-box{background:var(--orange-bg);border:1px solid #f5c4a0;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);margin-bottom:14px;line-height:1.5}
+
+/* Day modal */
+.day-person-row{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.day-person-row:last-child{border-bottom:none}
+.day-load-col{text-align:right;flex-shrink:0;margin-left:10px}
+.day-load-num{font-size:16px;font-weight:700}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;font-size:13px;font-weight:500;padding:12px 20px;border-radius:10px;z-index:300;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none;box-shadow:var(--shadow-lg)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* LOGIN SCREEN */
+.login-screen {
+  position:fixed;inset:0;background:var(--bg);z-index:1000;
+  display:flex;align-items:center;justify-content:center;
+}
+.login-card {
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:40px;width:400px;max-width:95vw;box-shadow:var(--shadow-lg);text-align:center;
+}
+.login-logo {
+  width:52px;height:52px;background:var(--text);border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--bg);font-family:'Fraunces',serif;font-size:26px;font-weight:700;
+  margin:0 auto 20px;
+}
+.login-card h2 { font-family:'Fraunces',serif;font-size:22px;font-weight:700;margin-bottom:6px; }
+.login-card .sub { font-size:13px;color:var(--muted);margin-bottom:28px; }
+
+.name-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px; }
+.name-tile {
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:10px;
+  border:2px solid var(--border);background:var(--surface2);
+  cursor:pointer;transition:all 0.15s;text-align:left;
+}
+.name-tile:hover { border-color:var(--border2);background:#f0ede9; }
+.name-tile.selected { border-color:var(--text);background:var(--text); color:#fff; }
+.name-tile.selected .tile-name { color:#fff; }
+.name-tile.selected .tile-role { color:rgba(255,255,255,0.6); }
+.tile-name { font-size:13px;font-weight:600;color:var(--text); }
+.tile-role { font-size:10px;color:var(--muted);margin-top:1px; }
+.tile-av { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0; }
+
+.pin-step { display:none; }
+.pin-step.active { display:block; }
+.pin-user-row {
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 14px;margin-bottom:20px;
+}
+.pin-dots { display:flex;gap:10px;justify-content:center;margin-bottom:20px; }
+.pin-dot {
+  width:14px;height:14px;border-radius:50%;
+  background:var(--border);border:2px solid var(--border2);
+  transition:all 0.15s;
+}
+.pin-dot.filled { background:var(--text);border-color:var(--text); }
+.pin-keypad { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px; }
+.pin-key {
+  padding:14px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface2);font-size:18px;font-weight:600;
+  cursor:pointer;transition:all 0.15s;font-family:'Fraunces',serif;
+}
+.pin-key:hover { background:var(--border); }
+.pin-key:active { background:var(--border2);transform:scale(0.96); }
+.pin-key.del { font-size:14px;font-weight:500;color:var(--red); }
+.pin-key.zero { grid-column:2; }
+.pin-error { font-size:12px;color:var(--red);margin-bottom:12px;min-height:18px;transition:opacity 0.2s; }
+.login-btn { width:100%;justify-content:center;padding:11px; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+}
+
+.user-pill {
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:5px 12px 5px 6px;
+  font-size:13px;font-weight:500;color:var(--text2);
+  cursor:pointer;transition:background 0.15s;
+}
+.user-pill:hover { background:var(--border); }
+
+.pm-badge {
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;
+  background:#1a1714;color:#fff;
+  padding:2px 7px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:0.4px;
+}
+.partner-badge {
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;
+  background:#fef3db;color:#b87d0e;
+  border:1px solid #f0d080;
+  padding:2px 7px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:0.4px;
+}
+
+.proj-card.locked { opacity:1; }
+.locked-notice {
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;color:var(--muted);
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;padding:7px 10px;margin-top:8px;
+}
+
+.deliv-pin {
+  display:flex;align-items:flex-start;gap:3px;margin-top:2px;
+  background:#fff3cd;border:1px solid #ffc107;border-radius:4px;
+  padding:3px 5px;cursor:pointer;transition:background 0.15s;
+}
+.deliv-pin:hover { background:#ffec8a; }
+
+.deliv-row {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 8px;background:var(--surface2);border-radius:6px;
+  margin-bottom:4px;border:1px solid var(--border);
+  cursor:default;transition:background 0.15s;
+}
+.deliv-row.deliv-row-edit { cursor:pointer; }
+.deliv-row.deliv-row-edit:hover { background:#f0ede9; }
+
+.deadline-list { display:flex;flex-direction:column;gap:10px; }
+.deadline-item { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow); }
+.deadline-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
+.deadline-proj { font-size:11px;color:var(--muted);margin-top:2px; }
+.deadline-name { font-size:13px;font-weight:600; }
+.deadline-date { font-size:12px;color:var(--text2); }
+.deadline-countdown { font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px; }
+
+.override-hist-item { display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;border:1px solid var(--border); }
+
+@media(max-width:768px) {
+  .header { padding:12px 16px; flex-wrap:wrap; gap:8px; }
+  .legend { display:none; }
+  .header-actions { gap:6px; }
+  .btn { font-size:12px; padding:7px 10px; }
+  .header-title { font-size:16px; }
+  .main { padding:16px; }
+  .summary-row { grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px; }
+  .tabs { padding:0 16px; overflow-x:auto; white-space:nowrap; }
+  .tab { padding:10px 14px; font-size:12px; }
+  .grid-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .g-row { grid-template-columns:140px repeat(7,minmax(90px,1fr)); }
+  .person-cell { padding:8px 10px; }
+  .p-name { font-size:12px; }
+  .proj-grid { grid-template-columns:1fr; }
+  .weekend-label { font-size:9px; }
+}
+@media(max-width:480px) {
+  .summary-row { grid-template-columns:1fr 1fr; }
+  .header-actions .btn:not(.user-pill-wrap) { display:none; }
+}
+
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+  <div style="font-family:'Fraunces',serif;font-size:16px;color:var(--text2)">Loading…</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">W</div>
+    <h2>Workload Tracker</h2>
+    <div id="loginStep1">
+      <p class="sub">Select your name to continue.</p>
+      <select id="loginSelect" style="width:100%;margin-bottom:16px;font-size:14px;padding:10px 12px">
+        <option value="">— Who are you? —</option>
+      </select>
+      <button class="btn btn-primary login-btn" onclick="doDirectLogin()">Enter →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div class="overlay" id="confirmDeleteModal">
+  <div class="modal" style="width:400px;text-align:center">
+    <div style="font-size:36px;margin-bottom:12px">🗑️</div>
+    <h2 style="margin-bottom:8px">Remove Project?</h2>
+    <p id="confirmDeleteMsg" style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6"></p>
+    <div style="display:flex;gap:10px">
+      <button class="btn" style="flex:1;justify-content:center" onclick="closeModal('confirmDeleteModal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center" id="confirmDeleteBtn">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROJECT MODAL -->
+<div class="overlay" id="editProjModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('editProjModal')">×</button>
+    <h2>Edit Project</h2>
+    <p class="modal-sub" id="editProjSubtitle"></p>
+    <div class="two-col">
+      <div class="field"><label>Project Name</label><input type="text" id="epName"></div>
+      <div class="field"><label>Client</label><input type="text" id="epClient"></div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Start Date</label><input type="date" id="epStart"></div>
+      <div class="field"><label>End Date</label><input type="date" id="epEnd"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="epNotes" rows="2"></textarea></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:8px">Team Allocations</div>
+    <div id="epMembersWrap"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('editProjModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditProject()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- NO ACCESS MODAL -->
+<div class="overlay" id="noAccessModal">
+  <div class="modal" style="width:420px;text-align:center">
+    <button class="modal-close" onclick="closeModal('noAccessModal')">×</button>
+    <div style="font-size:42px;margin-bottom:14px">📩</div>
+    <h2 style="margin-bottom:8px">Contact the Project Manager</h2>
+    <p id="noAccessMsg" style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7"></p>
+    <div id="pmContactCard" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;text-align:left">
+      <div id="pmContactAvatar" class="avatar" style="width:38px;height:38px;font-size:14px;flex-shrink:0"></div>
+      <div>
+        <div id="pmContactName" style="font-size:14px;font-weight:700"></div>
+        <div id="pmContactRole" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+        <div style="font-size:11px;color:var(--blue);margin-top:4px;font-weight:500">Project Manager</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="closeModal('noAccessModal')">Got it</button>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">W</div>
+    <div>
+      <div class="header-title">Workload Tracker</div>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background:#b8dfc9"></div> Available</div>
+      <div class="legend-item"><div class="ldot" style="background:#f9d97a"></div> Busy</div>
+      <div class="legend-item"><div class="ldot" style="background:#f5a9a3"></div> Full</div>
+      <div class="legend-item"><span class="spike-badge">⚡ Spike</span> Weekly override</div>
+    </div>
+    <button class="btn btn-accent" onclick="switchTab('finder',document.querySelectorAll('.tab')[4])">🔍 Find Capacity</button>
+    <button class="btn btn-primary" id="logThisWeekBtn" onclick="openWeeklyOverrideModal()">⚡ Log This Week</button>
+    <button class="btn" onclick="openAddProjectModal()">+ New Project</button>
+    <div style="position:relative">
+      <div class="user-pill" onclick="toggleUserMenu()" id="userPill">
+        <div class="avatar" id="userAvatar" style="width:26px;height:26px;font-size:10px"></div>
+        <span id="userPillName"></span>
+        <span style="font-size:10px;color:var(--muted);margin-left:2px">▾</span>
+      </div>
+      <div id="userMenu" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);min-width:160px;z-index:100;overflow:hidden">
+        <div onclick="openSettingsModal()" style="padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 0.1s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">⚙️ Settings</div>
+        <div onclick="exportData()" style="padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 0.1s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">📤 Export Data</div>
+        <div style="height:1px;background:var(--border)"></div>
+        <div onclick="doLogout()" style="padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--red);transition:background 0.1s" onmouseenter="this.style.background='var(--red-bg)'" onmouseleave="this.style.background=''">→ Sign Out</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('weekly',this)">Weekly Grid</div>
+  <div class="tab" onclick="switchTab('monthly',this)">Monthly Calendar</div>
+  <div class="tab" onclick="switchTab('projects',this)">Projects</div>
+  <div class="tab" onclick="switchTab('mywork',this)" id="myworkTab">My Work <span id="inboxBadge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:3px"></span></div>
+  <div class="tab" onclick="switchTab('finder',this)">🔍 Capacity Finder</div>
+</div>
+
+<div class="main">
+  <div class="summary-row">
+    <div class="card"><div class="card-label">Team Availability</div><div class="card-value val-green" id="s-avail">—</div><div class="card-sub">avg free capacity this week</div></div>
+    <div class="card"><div class="card-label">Available</div><div class="card-value val-green" id="s-green">—</div><div class="card-sub">people below 60% load</div></div>
+    <div class="card"><div class="card-label">Busy</div><div class="card-value val-yellow" id="s-yellow">—</div><div class="card-sub">people at 60–85% load</div></div>
+    <div class="card"><div class="card-label">Overloaded</div><div class="card-value val-red" id="s-red">—</div><div class="card-sub">people above 85%</div></div>
+  </div>
+
+  <div id="view-weekly">
+    <div class="section-header">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="section-title" id="weeklyViewTitle">Weekly Workload</div>
+        <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px;font-weight:600">
+          <div id="toggleWeekly" onclick="setWorkloadView('weekly')" style="padding:5px 14px;cursor:pointer;background:var(--text);color:#fff;transition:all 0.15s">Weekly</div>
+          <div id="toggleYearly" onclick="setWorkloadView('yearly')" style="padding:5px 14px;cursor:pointer;color:var(--text2);transition:all 0.15s">Yearly</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="nav-controls" id="weekNavControls">
+          <button class="nav-btn" onclick="shiftWeek(-1)">‹</button>
+          <span class="nav-label" id="weekLabel"></span>
+          <button class="nav-btn" onclick="shiftWeek(1)">›</button>
+        </div>
+        <div class="nav-controls" id="yearNavControls" style="display:none">
+          <button class="nav-btn" onclick="shiftYear(-1)">‹</button>
+          <span class="nav-label" id="yearLabel"></span>
+          <button class="nav-btn" onclick="shiftYear(1)">›</button>
+        </div>
+      </div>
+    </div>
+    <div class="grid-wrap" id="weeklyGridWrap">
+      <div class="grid-head" id="weekHead"></div>
+      <div id="weekRows"></div>
+      <div class="add-row" onclick="openAddMemberModal()">＋ Add team member</div>
+    </div>
+    <div id="yearlyGridWrap" style="display:none">
+      <div class="grid-head" id="yearHead"></div>
+      <div id="yearRows"></div>
+    </div>
+  </div>
+
+  <div id="view-monthly" class="hidden">
+    <div class="section-header">
+      <div class="section-title">Monthly Calendar</div>
+      <div class="nav-controls">
+        <button class="nav-btn" onclick="shiftMonth(-1)">‹</button>
+        <span class="nav-label" id="monthLabel"></span>
+        <button class="nav-btn" onclick="shiftMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-dow-row">
+        <div class="cal-dow">Sun</div><div class="cal-dow">Mon</div><div class="cal-dow">Tue</div>
+        <div class="cal-dow">Wed</div><div class="cal-dow">Thu</div>
+        <div class="cal-dow" style="color:#ccc">Fri</div><div class="cal-dow" style="color:#ccc">Sat</div>
+      </div>
+      <div id="calWeeks"></div>
+    </div>
+  </div>
+
+  <div id="view-projects" class="hidden">
+    <div class="section-header">
+      <div class="section-title">Active Projects</div>
+      <button class="btn btn-primary" onclick="openAddProjectModal()">+ New Project</button>
+    </div>
+    <div class="proj-grid" id="projGrid"></div>
+  </div>
+
+  <div id="view-mywork" class="hidden">
+    <div class="section-header">
+      <div class="section-title">My Work</div>
+      <div id="myworkSubtitle" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div class="mywork-grid" id="myworkGrid">
+      <div class="mywork-panel" id="myworkTasks"></div>
+      <div class="mywork-panel" id="myworkNotifs"></div>
+    </div>
+  </div>
+
+  <div id="view-finder" class="hidden">
+    <div class="section-header"><div class="section-title">Capacity Finder</div></div>
+    <div class="finder-panel">
+      <div class="finder-panel-top">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap">Min free capacity</label>
+            <input type="range" min="10" max="90" step="5" value="30" id="threshSlider" style="accent-color:var(--green);width:120px" oninput="document.getElementById('threshVal').textContent=this.value+'%';renderFinder()">
+            <span class="threshold-val" id="threshVal">30%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2)">From</label>
+            <input type="date" id="finderStart" onchange="renderFinder()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);width:130px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2)">To</label>
+            <input type="date" id="finderEnd" onchange="renderFinder()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);width:130px">
+          </div>
+        </div>
+      </div>
+      <div class="finder-panel-body"><div class="finder-grid" id="finderGrid"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SPIKE / OVERRIDE MODAL -->
+<div class="overlay" id="overrideModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('overrideModal')">×</button>
+    <h2>⚡ Log Task / Busy Period</h2>
+    <p class="modal-sub">Log a specific day task or set a date range where your load differs from your project baseline</p>
+    <div class="info-box">Your <strong>project baseline</strong> is set by your project allocations. Use this to log <strong>ad-hoc tasks</strong> (e.g. a day-long review) or planned busy/quiet periods.</div>
+    <div id="ovPersonDisplay" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:14px"></div>
+    <input type="hidden" id="ovPerson">
+    <div class="two-col">
+      <div class="field"><label>From</label><input type="date" id="ovStart"></div>
+      <div class="field"><label>To</label><input type="date" id="ovEnd"></div>
+    </div>
+    <div class="field">
+      <label>Load % during this period</label>
+      <div class="slider-row">
+        <input type="range" min="0" max="100" value="80" id="ovLoad" oninput="updateOvUI()">
+        <span class="slider-val" id="ovLoadVal">80%</span>
+      </div>
+    </div>
+    <div class="field"><label>Reason</label><textarea id="ovReason" rows="2" placeholder="e.g. deliverable crunch, field survey week, leave..."></textarea></div>
+    <div id="ovHistorySection" style="margin-top:16px;display:none">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:8px">Past Busy Periods</div>
+      <div id="ovHistoryList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('overrideModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOverrideForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJECT MODAL -->
+<div class="overlay" id="addProjModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addProjModal')">×</button>
+    <h2>Add Project</h2>
+    <p class="modal-sub">Projects set the baseline workload automatically across their entire duration</p>
+    <div class="two-col">
+      <div class="field"><label>Project Name</label><input type="text" id="pjName" placeholder="e.g. Dibbeen ESIA"></div>
+      <div class="field"><label>Client</label><input type="text" id="pjClient" placeholder="e.g. RSCN"></div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Start Date</label><input type="date" id="pjStart"></div>
+      <div class="field"><label>End / Deliverable Date</label><input type="date" id="pjEnd"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="pjNotes" rows="2" placeholder="Scope, key milestones, special considerations..."></textarea></div>
+    <div class="info-box" style="margin-top:4px;margin-bottom:16px">💡 After saving, open the project card to add deliverables and deadlines.</div>
+    <div id="pjMembersWrap"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addProjModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEMBER TO PROJECT MODAL -->
+<div class="overlay" id="addProjMemberModal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('addProjMemberModal')">×</button>
+    <h2>Assign Team Member</h2>
+    <p class="modal-sub" id="assignProjLabel"></p>
+    <div class="field"><label>Team Member</label><select id="assignPerson"></select></div>
+    <div class="field">
+      <label>Their allocation to this project (%)</label>
+      <div class="slider-row">
+        <input type="range" min="5" max="100" step="5" value="50" id="assignAlloc" oninput="document.getElementById('assignAllocVal').textContent=this.value+'%'">
+        <span class="slider-val" id="assignAllocVal">50%</span>
+      </div>
+    </div>
+    <div class="info-box" id="allocWarning" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addProjMemberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAssignment()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEMBER MODAL -->
+<div class="overlay" id="addMemberModal">
+  <div class="modal" style="width:440px">
+    <button class="modal-close" onclick="closeModal('addMemberModal')">×</button>
+    <h2>Add Team Member</h2>
+    <p class="modal-sub">Only admins can create accounts.</p>
+    <div class="field"><label>Full Name</label><input type="text" id="mName" placeholder="e.g. Sarah Chen"></div>
+    <div class="two-col">
+      <div class="field"><label>Title</label>
+        <select id="mTitle">
+          <option value="">— Select title —</option>
+          <option>Intern</option><option>Analyst</option><option>Senior Analyst</option>
+          <option>Consultant</option><option>Senior Consultant</option><option>Manager</option><option>Partner</option>
+        </select>
+      </div>
+      <div class="field"><label>Department</label>
+        <select id="mDept"><option>ESIA</option><option>Ecology</option><option>Socioeconomic</option><option>Air &amp; Noise</option><option>GIS</option><option>Project Management</option><option>Management</option><option>Other</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Initial Password</label><input type="password" id="mPassword" placeholder="Min 4 characters" autocomplete="new-password"></div>
+    <div class="info-box">The person will use this password to log in. They can change it in Settings.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addMemberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addMember()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY DETAIL MODAL -->
+<div class="overlay" id="dayModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('dayModal')">×</button>
+    <h2 id="dayModalTitle"></h2>
+    <p class="modal-sub">Workload based on project baselines + any weekly overrides</p>
+    <div id="dayModalBody"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-primary" onclick="closeModal('dayModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT DELIVERABLE MODAL -->
+<div class="overlay" id="editDelivModal">
+  <div class="modal" style="width:440px">
+    <button class="modal-close" onclick="closeModal('editDelivModal')">×</button>
+    <h2>Edit Deliverable</h2>
+    <p class="modal-sub" id="editDelivProjLabel"></p>
+    <div class="field"><label>Deliverable Name</label><input type="text" id="editDelivName"></div>
+    <div class="two-col">
+      <div class="field"><label>Due Date</label><input type="date" id="editDelivDate"></div>
+      <div class="field">
+        <label>Effort (working days)</label>
+        <input type="number" min="1" max="60" step="1" value="5" id="editDelivEffort" placeholder="e.g. 5">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Load added to assignee before due date</div>
+      </div>
+    </div>
+    <div class="field"><label>Assigned To</label><select id="editDelivAssigned"></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteDeliverableFromEdit()">Delete</button>
+      <button class="btn" onclick="closeModal('editDelivModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditDeliverable()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DELIVERABLE MODAL -->
+<div class="overlay" id="addDelivModal">
+  <div class="modal" style="width:440px">
+    <button class="modal-close" onclick="closeModal('addDelivModal')">×</button>
+    <h2>Add Deliverable</h2>
+    <p class="modal-sub" id="delivProjLabel"></p>
+    <div class="field"><label>Deliverable Name</label><input type="text" id="delivName" placeholder="e.g. Scoping Report, Baseline Survey, Final Submission..."></div>
+    <div class="two-col">
+      <div class="field"><label>Due Date</label><input type="date" id="delivDate"></div>
+      <div class="field">
+        <label>Effort (working days)</label>
+        <input type="number" min="1" max="60" step="1" value="5" id="delivEffort" placeholder="e.g. 5">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Load added to assignee before due date</div>
+      </div>
+    </div>
+    <div class="field"><label>Assigned To</label><select id="delivAssigned"></select></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addDelivModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDeliverable()">Add Deliverable</button>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK SUMMARY MODAL -->
+<div class="overlay" id="weekSummaryModal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('weekSummaryModal')">×</button>
+    <h2 id="weekSummaryTitle">Week of …</h2>
+    <div id="weekSummaryBody"></div>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal('weekSummaryModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settingsModal">
+  <div class="modal" style="width:460px">
+    <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+    <h2>Settings</h2>
+    <p class="modal-sub" id="settingsSubtitle"></p>
+    <div id="adminTeamSection" style="display:none;margin-bottom:18px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px">Manage Team — Titles</div>
+      <div id="adminTeamList"></div>
+    </div>
+    <div id="regularNameSection">
+      <div class="field"><label>Display Name</label><input type="text" id="settingsName" placeholder="Your name"></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;margin-top:4px">Change Password</div>
+    <div id="adminPasswordNote" style="display:none" class="info-box">As admin, enter your current admin password to change it.</div>
+    <div class="field"><label>Current Password</label><input type="password" id="settingsCurrentPin" placeholder="Current password" autocomplete="current-password"></div>
+    <div class="two-col">
+      <div class="field"><label>New Password</label><input type="password" id="settingsNewPin" placeholder="New password" autocomplete="new-password"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="settingsConfirmPin" placeholder="Confirm" autocomplete="new-password"></div>
+    </div>
+    <div class="info-box">Leave password fields blank to save without changing password.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PALETTE = [
+  {bg:'#e8f5ef',fg:'#2d8f5e'},{bg:'#e8f0fc',fg:'#2563b0'},
+  {bg:'#fdecea',fg:'#c0392b'},{bg:'#fef3db',fg:'#b87d0e'},
+  {bg:'#f3e8ff',fg:'#7c3aed'},{bg:'#fef0e8',fg:'#c2500a'},
+  {bg:'#e8faf8',fg:'#0d7e70'},{bg:'#fce8f3',fg:'#be185d'},
+];
+
+let weekOffset=0, monthOffset=0;
+let assigningProjectId = null;
+
+const TITLES = ['Intern','Analyst','Senior Analyst','Consultant','Senior Consultant','Manager','Partner'];
+
+function isAdmin()   { return currentUser && currentUser.id === 0; }
+function isPartner() { return currentUser && currentUser.title === 'Partner'; }
+function canEditProject(proj) {
+  if(!currentUser) return false;
+  if(isAdmin() || isPartner()) return true;
+  return proj.creatorId === currentUser.id;
+}
+function canCreateAccounts() { return isAdmin(); }
+
+let team = [
+  {id:1, name:'Mounir Mounayer', title:'Senior Consultant', dept:'ESIA', c:PALETTE[0]},
+  {id:2, name:'Noor Haddad',     title:'Senior Analyst',    dept:'ESIA', c:PALETTE[1]},
+  {id:3, name:'Yasmine Khoury',  title:'Consultant',        dept:'ESIA', c:PALETTE[2]},
+  {id:4, name:'Leen Kraishan',   title:'Senior Analyst',    dept:'ESIA', c:PALETTE[3]},
+  {id:5, name:'Farah Khoury',    title:'Senior Consultant', dept:'ESIA', c:PALETTE[4]},
+  {id:6, name:'Aya Nihad',       title:'Senior Analyst',    dept:'ESIA', c:PALETTE[5]},
+  {id:7, name:'Aya Ramadan',     title:'Senior Analyst',    dept:'ESIA', c:PALETTE[6]},
+  {id:8, name:'Suhair Hassuneh', title:'Analyst',           dept:'ESIA', c:PALETTE[7]},
+];
+
+let currentUser = null;
+
+let projects = [
+  {
+    id: 1772668989451,
+    name: 'EGYPT WFs', client: 'RCREEE',
+    start: '2026-01-01', end: '2026-05-31',
+    creatorId: 1, notes: '',
+    deliverables: [
+      {id:'d1772706052656', name:'testLK',                 date:'2026-03-12', effortDays:5,  assignedTo:4, pendingApproval:false, completed:true},
+      {id:'d1772669524524', name:'Scoping Report Amunet',  date:'2026-04-08', effortDays:20, assignedTo:3},
+      {id:'d1772669059787', name:'Scoping Report SCATEC',  date:'2026-04-08', effortDays:20, assignedTo:4, completed:true},
+      {id:'d1772669557796', name:'Scoping Report North',   date:'2026-04-08', effortDays:20, assignedTo:2},
+      {id:'d1772669595957', name:'ESIA 1',                 date:'2026-04-30', effortDays:20, assignedTo:4, pendingApproval:false, completed:true},
+      {id:'d1772669609981', name:'ESIA 2',                 date:'2026-04-30', effortDays:20, assignedTo:3},
+      {id:'d1772669627396', name:'ESIA 3',                 date:'2026-04-30', effortDays:20, assignedTo:2},
+    ],
+    members: [
+      {personId:1, allocation:20, role:'pm'},
+      {personId:2, allocation:40, role:'coordinator'},
+      {personId:3, allocation:40, role:'coordinator'},
+      {personId:4, allocation:40, role:'coordinator'},
+    ]
+  },
+  {
+    id: 1772669828164,
+    name: 'Dibbeen', client: 'Sama Dibbeen',
+    start: '2025-12-08', end: '2026-09-30',
+    creatorId: 4, notes: '',
+    deliverables: [
+      {id:'d1772705182278', name:'Scoping Report', date:'2026-04-16', effortDays:25, assignedTo:6},
+      {id:'d1772706222932', name:'ESIA',            date:'2026-09-30', effortDays:30, assignedTo:4},
+    ],
+    members: [
+      {personId:4, allocation:60, role:'pm'},
+      {personId:6, allocation:5,  role:'coordinator'},
+    ]
+  },
+  {
+    id: 1772707074600,
+    name: 'FULL CAPACITY PROJECT', client: '',
+    start: '2026-04-01', end: '2026-04-30',
+    creatorId: 5, notes: '',
+    deliverables: [
+      {id:'d1772707126752', name:'ESIA 1', date:'2026-04-30', effortDays:20, assignedTo:5},
+      {id:'d1772707142435', name:'ESIA 2', date:'2026-04-30', effortDays:20, assignedTo:8},
+    ],
+    members: [
+      {personId:5, allocation:100, role:'pm'},
+      {personId:8, allocation:100, role:'coordinator'},
+    ]
+  },
+];
+
+let overrides = [
+  {id:'sp1772710810074', personId:4, start:'2026-03-05', end:'2026-03-05', load:50, reason:'OHTL review for Ibrahim', savedAt:1772710810074},
+  {id:'sp1772711005315', personId:4, start:'2026-03-05', end:'2026-03-05', load:50, reason:'OTL for @Ibrahim',        savedAt:1772711005315},
+  {id:'sp1772711890314', personId:4, start:'2026-03-05', end:'2026-03-05', load:90, reason:'OHTL by @mounir',         savedAt:1772711890314},
+];
+
+let notifications = [
+  {id:'n1772664115046ktfe', toPersonId:4, type:'task_completed', data:{delivName:'Site Assessment',        projName:'Project Gamma',  projId:'103',           delivId:'d8'},              readAt:1772664115159, createdAt:1772664115046},
+  {id:'n1772664118061vh6r', toPersonId:4, type:'task_completed', data:{delivName:'Final Report',           projName:'Project Zeta',   projId:'106',           delivId:'d22'},             readAt:1772664118171, createdAt:1772664118061},
+  {id:'n1772669059787it79', toPersonId:4, type:'task_assigned',  data:{delivName:'Scoping Report SCATEC', projName:'EGYPT WFs',      date:'2026-03-01',      delivId:'d1772669059787',   projId:1772668989451}, readAt:1772669695056, createdAt:1772669059787},
+  {id:'n1772669524524qama', toPersonId:3, type:'task_assigned',  data:{delivName:'Scoping Report Amunet', projName:'EGYPT WFs',      date:'2026-04-08',      delivId:'d1772669524524',   projId:1772668989451}, readAt:null,          createdAt:1772669524524},
+  {id:'n1772669557797pmui', toPersonId:2, type:'task_assigned',  data:{delivName:'Scoping Report North',  projName:'EGYPT WFs',      date:'2026-04-08',      delivId:'d1772669557796',   projId:1772668989451}, readAt:null,          createdAt:1772669557797},
+  {id:'n17726695959572iqb', toPersonId:4, type:'task_assigned',  data:{delivName:'ESIA 1',                projName:'EGYPT WFs',      date:'2026-04-30',      delivId:'d1772669595957',   projId:1772668989451}, readAt:1772669695056, createdAt:1772669595957},
+  {id:'n1772669609981571y', toPersonId:3, type:'task_assigned',  data:{delivName:'ESIA 2',                projName:'EGYPT WFs',      date:'2026-04-30',      delivId:'d1772669609981',   projId:1772668989451}, readAt:null,          createdAt:1772669609981},
+  {id:'n1772669627397fdry', toPersonId:2, type:'task_assigned',  data:{delivName:'ESIA 3',                projName:'EGYPT WFs',      date:'2026-04-30',      delivId:'d1772669627396',   projId:1772668989451}, readAt:null,          createdAt:1772669627397},
+  {id:'n1772669710105q3fo', toPersonId:4, type:'task_completed', data:{delivName:'Scoping Report SCATEC', projName:'EGYPT WFs',      projId:'1772668989451', delivId:'d1772669059787'},  readAt:1772669710212, createdAt:1772669710105},
+];
+
+function weekStart(date, offset=0) {
+  const d=new Date(date); d.setDate(d.getDate()-d.getDay()+offset*7); d.setHours(0,0,0,0); return d;
+}
+function wKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmt(d,short=false) {
+  return d.toLocaleDateString('en-US',short?{month:'short',day:'numeric'}:{month:'short',day:'numeric',year:'numeric'});
+}
+function isToday(d) { const t=new Date(); return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear(); }
+function initials(n) { return n.split(' ').map(x=>x[0]).join('').toUpperCase(); }
+function loadColor(l) { return l<60?'var(--green)':l<=85?'var(--yellow)':'var(--red)'; }
+function loadBg(l)    { return l<60?'#b8dfc9':l<=85?'#f9d97a':'#f5a9a3'; }
+function chipClass(l) { return l<60?'chip-green':l<=85?'chip-yellow':'chip-red'; }
+function chipLabel(l) { return l<60?'Available':l<=85?'Busy':'Overloaded'; }
+function getWeekDays(ws) { return Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);return d;}); }
+function dateInRange(d, start, end) {
+  const t=new Date(d).getTime();
+  return t>=new Date(start).getTime() && t<=new Date(end+'T23:59:59').getTime();
+}
+function progressPct(start,end) {
+  const now=Date.now(), s=new Date(start).getTime(), e=new Date(end).getTime();
+  if(now<=s) return 0; if(now>=e) return 100;
+  return Math.round((now-s)/(e-s)*100);
+}
+function fmtPeriod(start, end) {
+  const s = new Date(start+'T12:00:00');
+  const e = new Date(end+'T12:00:00');
+  const sameYear = s.getFullYear()===e.getFullYear();
+  const sameMonth = sameYear && s.getMonth()===e.getMonth();
+  if(sameMonth) return s.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  const startLabel = s.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  const endLabel = e.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  const months = Math.round((e-s)/(1000*60*60*24*30.4));
+  const durLabel = months<1?'<1 mo':months===1?'1 mo':`${months} mo`;
+  return `${startLabel} → ${endLabel} <span style="font-size:10px;color:var(--muted);font-weight:400">(${durLabel})</span>`;
+}
+function daysUntil(dateStr) {
+  const diff = new Date(dateStr+'T23:59:59').getTime()-Date.now();
+  const d = Math.ceil(diff/86400000);
+  if(d<0) return 'Overdue';
+  if(d===0) return 'Due today';
+  if(d===1) return '1 day left';
+  if(d<=60) return d+' days left';
+  const m=Math.round(d/30.4); return m+' month'+(m>1?'s':'')+' left';
+}
+
+function getActiveTasks(personId, weekKeyStr) {
+  const ws = new Date(weekKeyStr+'T12:00:00');
+  const we = new Date(ws); we.setDate(we.getDate()+6);
+  const tasks = [];
+  projects.forEach(proj => {
+    (proj.deliverables||[]).forEach(d => {
+      if(d.assignedTo !== personId) return;
+      if(d.completed) return;
+      const due = new Date(d.date+'T23:59:59');
+      const effort = d.effortDays||0;
+      if(!effort) return;
+      const calDays = Math.ceil(effort * 7/5 * 1.5);
+      const windowStart = new Date(due);
+      windowStart.setDate(windowStart.getDate() - calDays);
+      if(ws <= due && we >= windowStart) {
+        tasks.push({name: d.name, projName: proj.name, effortDays: effort, dueDate: d.date});
+      }
+    });
+  });
+  return tasks;
+}
+
+function getEffectiveLoad(personId, weekKeyStr) {
+  const ws = new Date(weekKeyStr+'T12:00:00');
+  const we = new Date(ws); we.setDate(we.getDate()+4);
+
+  let baselineLoad = 0;
+  let activeProjects = [];
+  projects.forEach(p => {
+    if(!dateInRange(ws, p.start, p.end)) return;
+    const member = p.members.find(m=>m.personId===personId);
+    if(member && member.allocation > 0) {
+      baselineLoad += member.allocation;
+      activeProjects.push({name:p.name, alloc:member.allocation});
+    }
+  });
+
+  const activeTasks = getActiveTasks(personId, weekKeyStr);
+
+  const workDays = [];
+  for(let i=0; i<5; i++) {
+    const d = new Date(ws); d.setDate(d.getDate()+i);
+    const dStr = wKey(d);
+    const daySpikes = overrides.filter(o =>
+      o.personId === personId && o.start <= dStr && o.end >= dStr
+    );
+    if(daySpikes.length) {
+      workDays.push({load: Math.max(...daySpikes.map(s=>s.load)), isSpike:true, reasons: daySpikes.map(s=>s.reason)});
+    } else {
+      workDays.push({load: baselineLoad, isSpike:false, reasons:[]});
+    }
+  }
+
+  const spikedays = workDays.filter(d=>d.isSpike);
+  const hasSpike = spikedays.length > 0;
+
+  if(!hasSpike) {
+    return { load: baselineLoad||0, isOverride:false, baseline:baselineLoad, reason:'', projects:activeProjects, activeTasks, delivLoad:0 };
+  }
+
+  const avgLoad = Math.round(workDays.reduce((s,d)=>s+d.load,0) / workDays.length);
+  const allReasons = [...new Set(spikedays.flatMap(d=>d.reasons))].filter(Boolean);
+  const spikeCount = spikedays.length;
+  const reasonLabel = allReasons.length ? allReasons.join(' · ') : '';
+  const isFullWeek = spikedays.length === 5;
+
+  return {
+    load: avgLoad, isOverride: true, isFullWeek, spikeCount,
+    baseline: baselineLoad, reason: reasonLabel,
+    projects: activeProjects, activeTasks, delivLoad: 0
+  };
+}
+
+function updateSummary() {
+  const wk = wKey(weekStart(new Date(), weekOffset));
+  const loads = team.map(p=>getEffectiveLoad(p.id, wk).load);
+  const avg = Math.round(loads.reduce((a,b)=>a+b,0)/loads.length);
+  document.getElementById('s-avail').textContent  = (100-avg)+'%';
+  document.getElementById('s-green').textContent  = loads.filter(l=>l<60).length;
+  document.getElementById('s-yellow').textContent = loads.filter(l=>l>=60&&l<=85).length;
+  document.getElementById('s-red').textContent    = loads.filter(l=>l>85).length;
+  document.getElementById('headerDate').textContent = 'Today · '+fmt(new Date());
+}
+
+function renderWeekly() {
+  const ws = weekStart(new Date(), weekOffset);
+  const days = getWeekDays(ws);
+  document.getElementById('weekLabel').textContent = fmt(days[0],true)+' – '+fmt(days[4],true);
+
+  document.getElementById('weekHead').innerHTML =
+    `<div class="gh-cell" style="text-align:left">Team Member</div>`+
+    days.map(d=>{
+      const dow=d.getDay(), isWE=dow===5||dow===6;
+      return `<div class="gh-cell${isToday(d)?' today-col':isWE?' weekend-col':''}">
+        ${d.toLocaleDateString('en-US',{weekday:'short'})}<br>
+        <strong>${fmt(d,true)}</strong>
+      </div>`;
+    }).join('');
+
+  const wk = wKey(ws);
+  document.getElementById('weekRows').innerHTML = team.map(p=>{
+    const eff = getEffectiveLoad(p.id, wk);
+    const isMe = currentUser && currentUser.id === p.id;
+    const projTags = eff.projects.length
+      ? eff.projects.map(x=>`<span class="proj-tag">${x.name}</span>`).join('')
+      : '<span style="color:var(--muted);font-size:10px">No active projects</span>';
+    const overBy = eff.load > 100 ? eff.load - 100 : 0;
+    const cells = days.map(d=>{
+      const dow=d.getDay(), isWE=dow===5||dow===6;
+      if(isWE) return `<div class="day-cell weekend"><div class="weekend-label">Weekend</div></div>`;
+      const spikeLabel = eff.isOverride
+        ? (eff.isFullWeek ? (eff.load>eff.baseline?'⚡ Spike':'↓ Drop') : `⚡ ${eff.spikeCount}d task`)
+        : '';
+      return `<div class="day-cell${isToday(d)?' today-col':''}${isMe?' clickable-cell':''}" ${isMe?`onclick="openOverrideForPerson(${p.id},'${wk}')"`:''} style="${isMe?'':'cursor:default'}">
+        <div class="load-row">
+          <span class="load-pct" style="color:${loadColor(eff.load)}">${eff.load}%</span>
+          ${eff.isOverride
+            ? `<span class="spike-badge">${spikeLabel}</span>`
+            : `<span class="chip ${chipClass(eff.load)}">${chipLabel(eff.load)}</span>`}
+        </div>
+        <div class="bar-wrap">
+          ${eff.isOverride?`<div class="bar-fill" style="width:${Math.min(eff.baseline,100)}%;background:#b8dfc9;opacity:0.5"></div>`:''}
+          <div class="bar-fill" style="width:${Math.min(eff.load,100)}%;background:${loadBg(eff.load)};margin-top:${eff.isOverride?'2px':'0'}"></div>
+        </div>
+        ${overBy>0?`<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:2px">⚠ ${overBy}% over capacity</div>`:''}
+        <div class="load-proj">${projTags}</div>
+        ${eff.activeTasks.length>0?`<div style="font-size:9px;color:var(--orange);margin-top:2px">📌 ${eff.activeTasks.length} task${eff.activeTasks.length>1?'s':''}</div>`:''}
+        ${eff.isOverride && eff.reason ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${eff.reason.length>28?eff.reason.slice(0,28)+'…':eff.reason}</div>` : ''}
+        ${eff.isOverride ? `<div style="font-size:9px;color:${eff.load>eff.baseline?'var(--orange)':'var(--green)'};margin-top:1px">${eff.load>eff.baseline?'↑':'↓'} ${Math.abs(eff.load-eff.baseline)}% vs baseline</div>` : ''}
+        ${isMe?`<div style="font-size:9px;color:var(--muted);margin-top:3px;opacity:0.6">✎ Edit</div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="g-row">
+      <div class="person-cell">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg}">${initials(p.name)}</div>
+        <div><div class="p-name">${p.name}</div>${isAdmin()?`<div class="p-role">${p.title||''}</div>`:''}</div>
+      </div>${cells}
+    </div>`;
+  }).join('');
+}
+
+let yearlyViewYear = new Date().getFullYear();
+let workloadView = 'weekly';
+
+function setWorkloadView(view) {
+  workloadView = view;
+  document.getElementById('toggleWeekly').style.background = view==='weekly' ? 'var(--text)' : '';
+  document.getElementById('toggleWeekly').style.color = view==='weekly' ? '#fff' : 'var(--text2)';
+  document.getElementById('toggleYearly').style.background = view==='yearly' ? 'var(--text)' : '';
+  document.getElementById('toggleYearly').style.color = view==='yearly' ? '#fff' : 'var(--text2)';
+  document.getElementById('weeklyGridWrap').style.display = view==='weekly' ? '' : 'none';
+  document.getElementById('yearlyGridWrap').style.display = view==='yearly' ? '' : 'none';
+  document.getElementById('weekNavControls').style.display = view==='weekly' ? '' : 'none';
+  document.getElementById('yearNavControls').style.display = view==='yearly' ? '' : 'none';
+  document.getElementById('weeklyViewTitle').textContent = view==='weekly' ? 'Weekly Workload' : 'Yearly Projection';
+  if(view==='yearly') renderYearly();
+}
+
+function shiftYear(d) { yearlyViewYear += d; renderYearly(); }
+
+function getMonthAvgLoad(personId, year, month) {
+  const samples = [];
+  for(let day = 1; day <= 28; day += 7) {
+    const d = new Date(year, month, day);
+    const wk = wKey(weekStart(d, 0));
+    samples.push(getEffectiveLoad(personId, wk).load);
+  }
+  return Math.round(samples.reduce((a,b)=>a+b,0)/samples.length);
+}
+
+function renderYearly() {
+  yearlyViewYear = yearlyViewYear || new Date().getFullYear();
+  document.getElementById('yearLabel').textContent = yearlyViewYear;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const curMonth = new Date().getMonth();
+  const curYear = new Date().getFullYear();
+
+  document.getElementById('yearHead').className = 'year-head';
+  document.getElementById('yearHead').innerHTML =
+    `<div class="gh-cell" style="text-align:left">Team Member</div>` +
+    months.map((m, i) => {
+      const isPast = yearlyViewYear < curYear || (yearlyViewYear===curYear && i < curMonth);
+      const isCur  = yearlyViewYear===curYear && i===curMonth;
+      return `<div class="gh-cell${isCur?' today-col':''}" style="${isPast?'color:var(--muted)':''}">${m}</div>`;
+    }).join('');
+
+  document.getElementById('yearRows').innerHTML = team.map(p => {
+    const cells = months.map((m, i) => {
+      const load = getMonthAvgLoad(p.id, yearlyViewYear, i);
+      const isPast = yearlyViewYear < curYear || (yearlyViewYear===curYear && i < curMonth);
+      const isCur  = yearlyViewYear===curYear && i===curMonth;
+      return `<div class="year-cell${isCur?' today-col':''}" style="${isPast?'opacity:0.5':''}">
+        <div style="font-size:12px;font-weight:700;color:${load===0?'var(--muted)':loadColor(load)}">${load===0?'—':load+'%'}</div>
+        <div class="year-load-bar" style="background:${load===0?'var(--border)':loadBg(load)};opacity:${isPast?0.5:1}"></div>
+        ${load>0&&!isPast?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${chipLabel(load)}</div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="year-row">
+      <div class="person-cell">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg}">${initials(p.name)}</div>
+        <div><div class="p-name">${p.name}</div>${isAdmin()?`<div class="p-role">${p.title||''}</div>`:''}</div>
+      </div>${cells}
+    </div>`;
+  }).join('');
+}
+
+function shiftWeek(d) { weekOffset+=d; renderWeekly(); updateSummary(); }
+
+function renderMonthly() {
+  const today=new Date();
+  const target=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
+  document.getElementById('monthLabel').textContent =
+    target.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const year=target.getFullYear(), month=target.getMonth();
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const daysInPrev=new Date(year,month,0).getDate();
+
+  let cells=[];
+  for(let i=0;i<firstDay;i++) cells.push({day:daysInPrev-firstDay+1+i,month:'prev'});
+  for(let i=1;i<=daysInMonth;i++) cells.push({day:i,month:'cur'});
+  while(cells.length%7!==0) cells.push({day:cells.length-daysInMonth-firstDay+1,month:'next'});
+
+  const weeks=[];
+  for(let i=0;i<cells.length;i+=7) weeks.push(cells.slice(i,i+7));
+
+  document.getElementById('calWeeks').innerHTML = weeks.map(week=>`
+    <div class="cal-week">
+      ${week.map((cell)=>{
+        const isOther=cell.month!=='cur';
+        let cellDate, isT=false;
+        if(cell.month==='prev')       cellDate=new Date(year,month-1,cell.day);
+        else if(cell.month==='next')  cellDate=new Date(year,month+1,cell.day);
+        else { cellDate=new Date(year,month,cell.day); isT=isToday(cellDate); }
+
+        const dow=cellDate.getDay();
+        const isWE=dow===5||dow===6;
+        const wk=wKey(weekStart(cellDate,0));
+        const dateStr=wKey(cellDate);
+
+        const deliverablePins=!isOther ? projects.flatMap(proj=>
+          (proj.deliverables||[]).filter(d=>d.date===dateStr).map(d=>{
+            const assignee = d.assignedTo ? team.find(t=>t.id===d.assignedTo) : null;
+            const statusIcon = d.completed ? '✅' : d.pendingApproval ? '⏳' : '📌';
+            const pinBg = d.completed ? '#f0f9f4' : d.pendingApproval ? '#fff9e6' : '#fefce8';
+            const pinBorder = d.completed ? '#b8dfc9' : d.pendingApproval ? '#ffc107' : '#fde68a';
+            return `<div class="deliv-pin" style="background:${pinBg};border-color:${pinBorder}"
+              onclick="event.stopPropagation();${(currentUser&&canEditProject(proj))?`openEditDeliverable(${proj.id},'${d.id}')`:``}">
+              <span style="font-size:10px;flex-shrink:0">${statusIcon}</span>
+              <div style="min-width:0;flex:1">
+                <div style="font-size:9px;font-weight:700;color:#856404;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${proj.name}</div>
+                <div style="font-size:9px;color:#a07000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+              </div>
+              ${assignee?`<div class="avatar" style="background:${assignee.c.bg};color:${assignee.c.fg};width:14px;height:14px;font-size:6px;flex-shrink:0" title="${assignee.name}">${initials(assignee.name)}</div>`:''}
+            </div>`;
+          })
+        ).join('') : '';
+
+        let dayClass=`cal-day${isOther?' other-month':''}${isT?' today':''}`;
+        let dayStyle='';
+        if(isWE&&!isOther) dayStyle='background:#f7f5f2;';
+        const clickable=!isOther&&!isWE;
+
+        return `<div class="${dayClass}" style="${dayStyle}"
+          ${clickable?`onclick="openDayModal('${dateStr}')"`:''}>
+          <div class="cal-day-num">${cell.day}</div>
+          ${deliverablePins}
+          ${(isWE&&!isOther)?`<div style="font-size:10px;color:#ccc;font-style:italic;margin-top:4px">Weekend</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+function shiftMonth(d) { monthOffset+=d; renderMonthly(); }
+
+function renderProjects() {
+  if(!projects.length) {
+    document.getElementById('projGrid').innerHTML =
+      `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:14px">No projects yet. Add one to get started.</div>`;
+    return;
+  }
+  document.getElementById('projGrid').innerHTML = projects.map(p=>{
+    const activeMembers = p.members.filter(m=>m.allocation>0);
+    const totalAlloc = activeMembers.reduce((s,m)=>s+m.allocation,0);
+    const completedDelivs = (p.deliverables||[]).filter(d=>d.completed).length;
+    const totalDelivs = (p.deliverables||[]).length;
+    const prog = progressPct(p.start, p.end);
+    const delivs = p.deliverables||[];
+    const futureDelivs = delivs.filter(d=>!d.completed && new Date(d.date+'T23:59:59')>=new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const earliestDate = futureDelivs.length ? futureDelivs[0].date : null;
+    const upcomingGroup = earliestDate ? futureDelivs.filter(d=>d.date===earliestDate) : [];
+    const isMyProject = currentUser && canEditProject(p);
+    const pmPerson = team.find(t=>t.id===p.creatorId);
+
+    const dataWarnings = [];
+    if(p.end <= p.start) dataWarnings.push('⚠ Project end date is before or on start date');
+    delivs.forEach(d=>{
+      if(d.date < p.start) dataWarnings.push(`⚠ "${d.name}" due date is before project start`);
+      if(d.date > p.end)   dataWarnings.push(`⚠ "${d.name}" due date is after project end`);
+    });
+    p.members.forEach(m=>{
+      if(m.allocation > 100) dataWarnings.push(`⚠ ${team.find(t=>t.id===m.personId)?.name.split(' ')[0]||'Member'} allocation exceeds 100%`);
+    });
+    const warningBanner = dataWarnings.length
+      ? `<div style="background:#fff0f0;border:1px solid #f5a9a3;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--red);line-height:1.6">${dataWarnings.join('<br>')}</div>`
+      : '';
+
+    const memberPills = p.members.map(m=>{
+      const person=team.find(t=>t.id===m.personId);
+      if(!person) return '';
+      const isPM = m.personId===p.creatorId;
+      return `<div class="proj-member-pill" style="${isPM?'border-color:#1a1714;background:#f5f3f0':''}">
+        <div class="avatar" style="background:${person.c.bg};color:${person.c.fg};width:20px;height:20px;font-size:9px">${initials(person.name)}</div>
+        <span>${person.name.split(' ')[0]}</span>
+        <span style="color:var(--muted);font-size:10px">${m.allocation}%</span>
+        ${isPM?`<span class="pm-badge">PM</span>`:`<span style="font-size:9px;color:var(--muted)">Support</span>`}
+      </div>`;
+    }).join('');
+
+    const delivRows = delivs.map(d=>{
+      const due=daysUntil(d.date);
+      const dueColor=due==='Overdue'?'var(--red)':due.includes('day')&&parseInt(due)<14?'var(--orange)':'var(--text2)';
+      const canEdit = isMyProject;
+      const assignee = d.assignedTo ? team.find(t=>t.id===d.assignedTo) : null;
+      const statusIcon = d.completed ? '✅' : d.pendingApproval ? '⏳' : '📌';
+      const statusBg = d.completed ? '#f0f9f4' : d.pendingApproval ? '#fff9e6' : 'transparent';
+      const statusBorder = d.completed ? '#b8dfc9' : d.pendingApproval ? '#ffc107' : 'transparent';
+      return `<div class="deliv-row${canEdit&&!d.completed?' deliv-row-edit':''}"
+        style="background:${statusBg};border:1px solid ${statusBorder};border-radius:8px;margin-bottom:4px"
+        ${canEdit&&!d.completed?`onclick="openEditDeliverable(${p.id},'${d.id}')"`:''}>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px">${statusIcon}</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;${d.completed?'text-decoration:line-through;color:var(--muted)':''}">${d.name}</div>
+            <div style="font-size:10px;color:${d.completed?'var(--green)':d.pendingApproval?'var(--orange)':dueColor};font-weight:500">
+              ${d.completed ? 'Completed ✓' : d.pendingApproval ? 'Pending PM approval' : new Date(d.date).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})+' · '+due}
+            </div>
+            ${assignee?`<div style="font-size:10px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:4px"><div class="avatar" style="background:${assignee.c.bg};color:${assignee.c.fg};width:14px;height:14px;font-size:7px;flex-shrink:0">${initials(assignee.name)}</div>${assignee.name}</div>`:''}
+          </div>
+        </div>
+        ${d.pendingApproval && isMyProject
+          ? `<div style="display:flex;gap:4px">
+               <button class="btn btn-sm" style="background:var(--green);color:#fff;border-color:var(--green);font-size:10px;padding:3px 8px" onclick="event.stopPropagation();approveDeliverable(${p.id},'${d.id}',true)">✓ Approve</button>
+               <button class="btn btn-sm btn-danger" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();approveDeliverable(${p.id},'${d.id}',false)">✕</button>
+             </div>`
+          : canEdit&&!d.completed?`<span style="font-size:11px;color:var(--muted);font-weight:500">Edit ›</span>`:''
+        }
+      </div>`;
+    }).join('');
+
+    return `<div class="proj-card">
+      ${warningBanner}
+      <div class="proj-card-top">
+        <div style="flex:1;min-width:0">
+          <div class="proj-name">${p.name}</div>
+          <div class="proj-client" style="margin-bottom:6px">${p.client}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${pmPerson?`<div class="avatar" style="background:${pmPerson.c.bg};color:${pmPerson.c.fg};width:20px;height:20px;font-size:9px">${initials(pmPerson.name)}</div>
+            <span style="font-size:11px;color:var(--text2);font-weight:500">${pmPerson.name}</span>`:''}
+            <span class="pm-badge">Project Manager</span>
+            ${isMyProject?`<span style="font-size:10px;color:var(--green);font-weight:600">✓ Your project</span>`:''}
+          </div>
+        </div>
+        <div class="proj-alloc-badge" style="color:${loadColor(Math.min(totalAlloc,100))};flex-shrink:0;text-align:center">
+          ${totalAlloc}%
+          <div style="font-size:10px;color:var(--muted);font-weight:400;font-family:'DM Sans',sans-serif">team alloc</div>
+          ${totalDelivs>0?`<div style="font-size:10px;color:var(--green);font-weight:600;margin-top:2px">${completedDelivs}/${totalDelivs} done</div>`:''}
+        </div>
+      </div>
+      <div class="proj-meta" style="margin-top:10px">
+        <div class="proj-meta-row"><span class="proj-meta-label">Period</span><span>${fmtPeriod(p.start, p.end)}</span></div>
+        ${upcomingGroup.length ? `<div class="proj-meta-row"><span class="proj-meta-label">Next due</span><span style="font-weight:600;color:${daysUntil(earliestDate)==='Overdue'?'var(--red)':parseInt(daysUntil(earliestDate))<14?'var(--orange)':'var(--text2)'}">
+          ${upcomingGroup.map(d=>d.name).join(' · ')} &nbsp;<span style="font-weight:400;font-size:11px">${daysUntil(earliestDate)}</span>
+        </span></div>` : ''}
+      </div>
+      <div class="timeline-bar-wrap"><div class="timeline-bar" style="width:${prog}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px;margin-bottom:10px">${prog}% of timeline elapsed</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Deliverables</div>
+      ${delivRows||`<div style="font-size:12px;color:var(--muted);padding:6px 0">No deliverables added yet</div>`}
+      ${isMyProject
+        ? `<button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:4px;margin-bottom:10px" onclick="openAddDeliverable(${p.id})">+ Add Deliverable</button>`
+        : `<div style="height:10px"></div>`}
+      ${p.notes?`<div style="font-size:11px;color:var(--text2);margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:6px">${p.notes}</div>`:''}
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Team</div>
+      <div class="proj-team">${memberPills}</div>
+      <div class="proj-actions">
+        ${isMyProject
+          ? `<button class="btn btn-sm" onclick="openEditProject(${p.id})">✎ Edit Project</button>
+             <button class="btn btn-sm" onclick="openAssignMember(${p.id})">+ Add Member</button>
+             <button class="btn btn-sm btn-danger" onclick="deleteProject(${p.id})">Remove</button>`
+          : `<button class="btn btn-sm" style="opacity:0.4;cursor:pointer" onclick="showNoAccess(${p.id},${p.creatorId})">+ Add Member</button>
+             <button class="btn btn-sm btn-danger" style="opacity:0.4" onclick="showNoAccess(${p.id},${p.creatorId})">Remove</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let deletingProjectId = null;
+function deleteProject(id) {
+  const proj = projects.find(p=>p.id===id);
+  if(!canEditProject(proj)) { showNoAccess(proj.id,proj.creatorId); return; }
+  deletingProjectId = id;
+  document.getElementById('confirmDeleteMsg').textContent =
+    'This will remove "' + proj.name + '" and all its baselines. This cannot be undone.';
+  document.getElementById('confirmDeleteBtn').onclick = function() {
+    projects = projects.filter(p=>p.id!==deletingProjectId);
+    deleteProjectFromDB(deletingProjectId);
+    closeModal('confirmDeleteModal');
+    renderProjects(); renderWeekly(); renderMonthly(); updateSummary();
+    showToast('Project removed');
+  };
+  openOverlay('confirmDeleteModal');
+}
+
+let editingProjectId = null;
+function openEditProject(id) {
+  const proj = projects.find(p=>p.id===id);
+  if(!canEditProject(proj)) { showNoAccess(proj.id,proj.creatorId); return; }
+  editingProjectId = id;
+  document.getElementById('editProjSubtitle').textContent = 'Editing: ' + proj.name;
+  document.getElementById('epName').value = proj.name;
+  document.getElementById('epClient').value = proj.client;
+  document.getElementById('epStart').value = proj.start;
+  document.getElementById('epEnd').value = proj.end;
+  document.getElementById('epNotes').value = proj.notes||'';
+  const wrap = document.getElementById('epMembersWrap');
+  wrap.innerHTML = team.map(p=>{
+    const existing = proj.members.find(m=>m.personId===p.id);
+    const val = existing ? existing.allocation : 0;
+    const isCreator = p.id===proj.creatorId;
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+      <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:26px;height:26px;font-size:10px">${initials(p.name)}</div>
+      <span style="flex:1;font-size:13px;font-weight:500">${p.name}${isCreator?' <span class="pm-badge">PM</span>':''}</span>
+      <label style="font-size:11px;color:var(--muted)">Alloc:</label>
+      <input type="number" min="0" max="100" step="5" value="${val}" id="epAlloc_${p.id}" style="width:65px;text-align:center;padding:5px 8px">
+      <span style="font-size:11px;color:var(--muted)">%</span>
+    </div>`;
+  }).join('');
+  openOverlay('editProjModal');
+}
+function saveEditProject() {
+  const proj = projects.find(p=>p.id===editingProjectId);
+  const name = document.getElementById('epName').value.trim();
+  const client = document.getElementById('epClient').value.trim();
+  const start = document.getElementById('epStart').value;
+  const end = document.getElementById('epEnd').value;
+  if(!name||!start||!end) { showToast('Please fill in name, start and end date'); return; }
+  if(end <= start) { showToast('⚠ End date must be after start date'); return; }
+  const outOfRange = (proj.deliverables||[]).filter(d=>d.date<start||d.date>end);
+  if(outOfRange.length) showToast(`⚠ ${outOfRange.length} deliverable(s) fall outside this date range — update them too`, 5000);
+  proj.name=name; proj.client=client; proj.start=start; proj.end=end;
+  proj.notes=document.getElementById('epNotes').value.trim();
+  proj.members=[];
+  team.forEach(p=>{
+    const v=parseInt(document.getElementById('epAlloc_'+p.id).value)||0;
+    if(v>0) proj.members.push({personId:p.id,allocation:v,role:p.id===proj.creatorId?'pm':'coordinator'});
+  });
+  if(!proj.members.find(m=>m.personId===proj.creatorId)) {
+    proj.members.unshift({personId:proj.creatorId,allocation:0,role:'pm'});
+  }
+  closeModal('editProjModal');
+  saveProject(proj);
+  renderProjects(); renderWeekly(); renderMonthly(); updateSummary();
+  showToast('Project updated ✓');
+}
+
+function populateFinderWeeks() {
+  const today = new Date();
+  const end = new Date(today); end.setDate(end.getDate()+28);
+  document.getElementById('finderStart').value = wKey(today);
+  document.getElementById('finderEnd').value = wKey(end);
+}
+
+function renderFinder() {
+  const threshold = parseInt(document.getElementById('threshSlider').value);
+  const startVal = document.getElementById('finderStart').value;
+  const endVal = document.getElementById('finderEnd').value;
+  const grid = document.getElementById('finderGrid');
+  if(!startVal || !endVal) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:14px">Please select a date range.</div>`; return; }
+  if(new Date(endVal) < new Date(startVal)) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:14px">End date must be after start date.</div>`; return; }
+
+  const weeks = [];
+  let cur = new Date(weekStart(new Date(startVal+'T12:00:00'), 0));
+  const endDate = new Date(endVal+'T12:00:00');
+  while(cur <= endDate) { weeks.push(wKey(cur)); cur = new Date(cur); cur.setDate(cur.getDate()+7); }
+  if(!weeks.length) weeks.push(wKey(new Date(startVal+'T12:00:00')));
+
+  const results = team.map(p => {
+    const loads = weeks.map(wk => getEffectiveLoad(p.id, wk).load);
+    const avgLoad = Math.round(loads.reduce((a,b)=>a+b,0) / loads.length);
+    const peakLoad = Math.max(...loads);
+    const avgFree = 100 - avgLoad;
+    const hasSpike = weeks.some(wk => getEffectiveLoad(p.id, wk).isOverride);
+    const activeProjs = new Map();
+    weeks.forEach(wk => { getEffectiveLoad(p.id, wk).projects.forEach(x => activeProjs.set(x.name, x.alloc)); });
+    return { p, avgLoad, peakLoad, avgFree, hasSpike, activeProjs };
+  }).filter(r => r.avgFree >= threshold).sort((a,b) => a.avgLoad - b.avgLoad);
+
+  const weekCount = weeks.length;
+  const rangeLabel = weekCount === 1 ? '1 week' : weekCount + ' weeks';
+
+  if(!results.length) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:14px">No one has ≥${threshold}% free on average across this period.</div>`; return; }
+
+  grid.innerHTML = results.map(({p, avgLoad, peakLoad, avgFree, hasSpike, activeProjs})=>`
+    <div class="finder-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg}">${initials(p.name)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">${p.name}</div>
+          ${isAdmin()?`<div style="font-size:10px;color:var(--muted)">${p.title||''}</div>`:''}
+        </div>
+      </div>
+      <div class="finder-avail" style="color:${loadColor(avgLoad)}">${avgFree}% avg free</div>
+      <div class="bar-wrap" style="margin-bottom:6px"><div class="bar-fill" style="width:${avgFree}%;background:${loadBg(avgLoad)}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Avg load ${avgLoad}% · Peak ${peakLoad}% · ${rangeLabel}</div>
+      ${hasSpike?`<div style="font-size:10px;color:var(--orange);margin-bottom:4px">⚡ Has a busy period in this range</div>`:''}
+      <div class="finder-projects">
+        ${activeProjs.size ? '📋 '+[...activeProjs.entries()].map(([n,a])=>`${n} (${a}%)`).join('<br>') : '<span style="color:var(--muted)">No active projects in range</span>'}
+      </div>
+    </div>`).join('');
+}
+
+const pins = {};
+let loginSelectedId = null;
+let pinEntry = '';
+
+function loadPersistedSession() {
+  try {
+    const saved = localStorage.getItem('wt_session');
+    if(!saved) return false;
+    const { userId } = JSON.parse(saved);
+    const user = userId === 0 ? ADMIN_USER : team.find(p=>p.id===userId);
+    if(!user) return false;
+    currentUser = user;
+    applyLogin();
+    return true;
+  } catch(e) { return false; }
+}
+function persistSession() { try { localStorage.setItem('wt_session', JSON.stringify({userId:currentUser.id})); } catch(e){} }
+function clearSession() { try { localStorage.removeItem('wt_session'); } catch(e){} }
+
+function loadPins() {
+  try { const saved = localStorage.getItem('wt_pins'); if(saved) Object.assign(pins, JSON.parse(saved)); } catch(e){}
+  if(!pins[0]) pins[0] = 'admin1234';
+  team.forEach(p=>{ if(!pins[p.id]) pins[p.id]='1234'; });
+}
+function savePins() { try { localStorage.setItem('wt_pins', JSON.stringify(pins)); } catch(e){} }
+
+function loadNames() {
+  try { const saved = localStorage.getItem('wt_names'); if(!saved) return; const names = JSON.parse(saved); team.forEach(p=>{ if(names[p.id]) p.name=names[p.id]; }); } catch(e){}
+}
+function saveNames() { try { const names={}; team.forEach(p=>names[p.id]=p.name); localStorage.setItem('wt_names', JSON.stringify(names)); } catch(e){} }
+
+const ADMIN_USER = { id:0, name:'Admin', title:'Admin', dept:'System', c:{bg:'#1a1714',fg:'#fff'} };
+
+function getLoginUsers() { return [ADMIN_USER, ...team]; }
+
+function populateLoginSelect() {
+  const sel = document.getElementById('loginSelect');
+  sel.innerHTML = `<option value="">— Who are you? —</option>` +
+    getLoginUsers().map(p=>`<option value="${p.id}">${p.name}${p.id===0?' (Admin)':''}</option>`).join('');
+}
+
+function doDirectLogin() {
+  const sel = document.getElementById('loginSelect');
+  const val = sel.value;
+  if(val === '') { showToast('Please select your name'); return; }
+  const id = parseInt(val);
+  currentUser = id === 0 ? ADMIN_USER : team.find(p=>p.id===id);
+  if(!currentUser) { showToast('Please select your name'); return; }
+  document.getElementById('loginScreen').style.display='none';
+  persistSession();
+  applyLogin();
+}
+
+function applyLogin() {
+  const av=document.getElementById('userAvatar');
+  av.style.background=currentUser.c.bg;
+  av.style.color=currentUser.c.fg;
+  av.textContent=initials(currentUser.name);
+  const badge = isAdmin() ? ' 🔑' : '';
+  document.getElementById('userPillName').textContent=currentUser.name + badge;
+  const addRow = document.querySelector('.add-row');
+  if(addRow) addRow.style.display = canCreateAccounts() ? 'flex' : 'none';
+  const myworkTab = document.getElementById('myworkTab');
+  if(myworkTab) myworkTab.style.display = isAdmin() ? 'none' : '';
+  updateSummary();
+  renderWeekly();
+  updateLogThisWeekBtn();
+  updateInboxBadge();
+}
+
+function toggleUserMenu() {
+  const menu=document.getElementById('userMenu');
+  menu.style.display=menu.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  const pill=document.getElementById('userPill');
+  const menu=document.getElementById('userMenu');
+  if(menu && pill && !pill.contains(e.target) && !menu.contains(e.target)) menu.style.display='none';
+});
+
+// ── SCHEMA NORMALIZER ─────────────────────────
+// Handles both old format {id,alloc,pmId} and new {personId,allocation,creatorId}
+function normalizeProject(p) {
+  if(!p.members) p.members = [];
+  p.members = p.members.map(m => ({
+    personId:   m.personId   ?? m.id,
+    allocation: m.allocation ?? m.alloc ?? 0,
+    role:       m.role       ?? (m.pmId ? 'pm' : 'coordinator')
+  }));
+  if(!p.creatorId && p.pmId) p.creatorId = p.pmId;
+  if(!p.deliverables) p.deliverables = [];
+  return p;
+}
+
+function exportData() {
+  document.getElementById('userMenu').style.display='none';
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    team: team.map(p=>({id:p.id,name:p.name,title:p.title,dept:p.dept,ci:team.indexOf(p)})),
+    projects, overrides, notifications
+  };
+  const json = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(json).then(()=>{
+    showToast('✅ Data copied to clipboard — paste it to Claude!');
+  }).catch(()=>{
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    ta.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:80vw;height:60vh;z-index:9999;padding:12px;font-size:11px;font-family:monospace;border:2px solid var(--green);border-radius:8px;background:#fff';
+    document.body.appendChild(ta); ta.select();
+    const close = document.createElement('button');
+    close.textContent='✕ Close';
+    close.style.cssText='position:fixed;top:calc(50% - 30vh - 36px);left:50%;transform:translateX(-50%);z-index:9999;padding:8px 20px;background:var(--green);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600';
+    close.onclick=()=>{ document.body.removeChild(ta); document.body.removeChild(close); };
+    document.body.appendChild(close);
+    showToast('Select all and copy the text, then paste it to Claude');
+  });
+}
+
+function doLogout() {
+  document.getElementById('userMenu').style.display='none';
+  clearSession(); currentUser=null; loginSelectedId=null;
+  document.getElementById('loginSelect').value='';
+  document.getElementById('loginScreen').style.display='flex';
+  populateLoginSelect();
+}
+
+function openSettingsModal() {
+  document.getElementById('userMenu').style.display='none';
+  const adminMode = isAdmin();
+  document.getElementById('settingsSubtitle').textContent = adminMode ? 'Administrator Account' : 'Logged in as '+currentUser.name;
+  document.getElementById('adminTeamSection').style.display = adminMode ? 'block' : 'none';
+  document.getElementById('regularNameSection').style.display = adminMode ? 'none' : 'block';
+  document.getElementById('settingsName').value = currentUser.name;
+  document.getElementById('settingsCurrentPin').value='';
+  document.getElementById('settingsNewPin').value='';
+  document.getElementById('settingsConfirmPin').value='';
+  if(adminMode) {
+    document.getElementById('adminTeamList').innerHTML = team.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:26px;height:26px;font-size:10px;flex-shrink:0">${initials(p.name)}</div>
+        <span style="flex:1;font-size:13px;font-weight:500;min-width:0">${p.name}</span>
+        <select id="adminTitle_${p.id}" style="width:140px;padding:5px 8px;font-size:12px">
+          ${TITLES.map(t=>`<option value="${t}"${p.title===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm btn-danger" onclick="adminRemoveMember(${p.id})" title="Remove">✕</button>
+      </div>`).join('');
+  }
+  openOverlay('settingsModal');
+}
+
+function saveSettings() {
+  const currentPin = document.getElementById('settingsCurrentPin').value;
+  const newPin = document.getElementById('settingsNewPin').value;
+  const confirmPin = document.getElementById('settingsConfirmPin').value;
+  if(isAdmin()) {
+    team.forEach(p=>{ const sel = document.getElementById('adminTitle_'+p.id); if(sel) p.title = sel.value; });
+    team.forEach(p=>saveTeamMember(p)); populateLoginSelect();
+  } else {
+    const newName = document.getElementById('settingsName').value.trim();
+    if(!newName) { showToast('Name cannot be empty'); return; }
+    currentUser.name = newName;
+    saveTeamMember(currentUser);
+    saveNames();
+  }
+  if(currentPin||newPin||confirmPin) {
+    const correct = pins[currentUser.id]||'1234';
+    if(currentPin!==correct) { showToast('Current password is incorrect'); return; }
+    if(newPin.length<4) { showToast('New password must be at least 4 characters'); return; }
+    if(newPin!==confirmPin) { showToast('Passwords do not match'); return; }
+    pins[currentUser.id]=newPin; savePins();
+  }
+  applyLogin(); populateLoginSelect(); closeModal('settingsModal'); showToast('Settings saved ✓');
+}
+
+function adminRemoveMember(id) {
+  const p = team.find(t=>t.id===id);
+  if(!p) return;
+  if(!confirm('Remove '+p.name+' from the team? This cannot be undone.')) return;
+  team = team.filter(t=>t.id!==id);
+  projects.forEach(proj=>{ proj.members = proj.members.filter(m=>m.personId!==id); saveProject(proj); });
+  overrides.filter(o=>o.personId===id).forEach(o=>deleteOverrideFromDB(o.id));
+  overrides = overrides.filter(o=>o.personId!==id);
+  deleteTeamMemberFromDB(id);
+  populateLoginSelect(); openSettingsModal(); renderWeekly(); updateSummary();
+  showToast(p.name+' removed');
+}
+
+function showNoAccess(projId, pmPersonId) {
+  const proj = projects.find(p=>p.id===projId);
+  const projName = proj ? proj.name : 'this project';
+  const pm = team.find(t=>t.id===pmPersonId);
+  document.getElementById('noAccessMsg').textContent =
+    'To make changes to "' + projName + '", please reach out to the Project Manager directly.';
+  if(pm) {
+    document.getElementById('pmContactAvatar').style.background=pm.c.bg;
+    document.getElementById('pmContactAvatar').style.color=pm.c.fg;
+    document.getElementById('pmContactAvatar').textContent=initials(pm.name);
+    document.getElementById('pmContactName').textContent=pm.name;
+    document.getElementById('pmContactRole').textContent=(pm.title||'')+(pm.dept?' · '+pm.dept:'');
+  }
+  openOverlay('noAccessModal');
+}
+
+function switchTab(view, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['weekly','monthly','projects','mywork','finder'].forEach(v=>{
+    const el2 = document.getElementById('view-'+v);
+    if(el2) el2.classList.toggle('hidden',v!==view);
+  });
+  const summaryRow = document.querySelector('.summary-row');
+  if(summaryRow) summaryRow.style.display = view==='weekly' ? '' : 'none';
+  if(view==='monthly') renderMonthly();
+  if(view==='projects') renderProjects();
+  if(view==='mywork') renderMyWork();
+  if(view==='finder') { populateFinderWeeks(); renderFinder(); }
+}
+
+function addNotification(toPersonId, type, data) {
+  const n = { id:'n'+Date.now()+Math.random().toString(36).slice(2,6), toPersonId, type, data, readAt:null, createdAt:Date.now() };
+  notifications.push(n);
+  saveNotification(n);
+  updateInboxBadge();
+}
+
+function updateInboxBadge() {
+  const badge = document.getElementById('inboxBadge');
+  if(!badge || !currentUser || isAdmin()) return;
+  const unreadNotifs = notifications.filter(n=>n.toPersonId===currentUser.id && !n.readAt).length;
+  const pendingApprovals = projects.filter(p=>p.creatorId===currentUser.id).flatMap(p=>(p.deliverables||[]).filter(d=>d.pendingApproval)).length;
+  const total = unreadNotifs + pendingApprovals;
+  badge.style.display = total ? 'inline' : 'none';
+  badge.textContent = total;
+}
+
+function renderMyWork() {
+  if(!currentUser || isAdmin()) {
+    document.getElementById('myworkTasks').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">Sign in as a team member to see your work.</div>';
+    document.getElementById('myworkNotifs').innerHTML=''; return;
+  }
+  const iAmPM = projects.some(p=>p.creatorId===currentUser.id);
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const unreadIds = notifications.filter(n=>n.toPersonId===currentUser.id && !n.readAt).map(n=>n.id);
+  notifications.filter(n=>n.toPersonId===currentUser.id && !n.readAt).forEach(n=>{ n.readAt=Date.now(); });
+  updateInboxBadge();
+  if(unreadIds.length) markNotifsRead(unreadIds);
+
+  const activeTasks=[], completedThisMonth=[], completedHistory=[];
+  projects.forEach(proj=>{
+    (proj.deliverables||[]).forEach(d=>{
+      if(d.assignedTo!==currentUser.id) return;
+      const t={...d, projName:proj.name, projId:proj.id, projCreatorId:proj.creatorId};
+      if(d.completed) {
+        const note = notifications.find(n=>(n.type==='task_approved'||n.type==='task_submitted') && n.data && n.data.delivId===d.id);
+        const completedAt = note ? new Date(note.createdAt) : null;
+        if(completedAt && completedAt>=monthStart) completedThisMonth.push(t);
+        else completedHistory.push(t);
+      } else { activeTasks.push(t); }
+    });
+  });
+  activeTasks.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  completedThisMonth.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  completedHistory.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  const pendingApproval=[];
+  if(iAmPM) {
+    projects.filter(p=>p.creatorId===currentUser.id).forEach(proj=>{
+      (proj.deliverables||[]).filter(d=>d.pendingApproval).forEach(d=>{
+        const assignee=team.find(t=>t.id===d.assignedTo);
+        pendingApproval.push({...d, projName:proj.name, projId:proj.id, assignee});
+      });
+    });
+  }
+
+  let tasksHtml='';
+  if(pendingApproval.length) {
+    tasksHtml+=`<div class="mywork-col-label" style="color:var(--orange)">⏳ Awaiting Your Approval</div>`;
+    tasksHtml+=pendingApproval.map(t=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff9e6;border:1px solid #ffc107;border-radius:10px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${t.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">📁 ${t.projName} · ${t.assignee?t.assignee.name:'Unassigned'} submitted</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-sm" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="approveDeliverable('${t.projId}','${t.id}',true)">✓ Approve</button>
+          <button class="btn btn-sm btn-danger" onclick="approveDeliverable('${t.projId}','${t.id}',false)">× Reject</button>
+        </div>
+      </div>`).join('');
+    tasksHtml+=`<div style="height:16px"></div>`;
+  }
+
+  tasksHtml+=`<div class="mywork-col-label">Active Tasks</div>`;
+  if(activeTasks.length) {
+    tasksHtml+=activeTasks.map(t=>{
+      const due=daysUntil(t.date);
+      const isOverdue=due==='Overdue';
+      const isUrgent=!isOverdue&&due.includes('day')&&parseInt(due)<7;
+      const dotColor=t.pendingApproval?'var(--orange)':isOverdue?'var(--red)':isUrgent?'var(--orange)':'var(--text2)';
+      const statusLabel=t.pendingApproval?'⏳ Awaiting PM approval':'';
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${t.pendingApproval?'#fff9e6':'var(--surface)'};border:1px solid ${t.pendingApproval?'#ffc107':'var(--border)'};border-radius:10px;margin-bottom:8px;box-shadow:var(--shadow)">
+        <input type="checkbox" ${t.pendingApproval?'checked':''} style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0" onchange="submitTaskForApproval('${t.projId}','${t.id}',this)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${t.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">📁 ${t.projName} · ${t.effortDays||'?'} days LOE</div>
+          ${statusLabel?`<div style="font-size:10px;font-weight:600;color:${dotColor};margin-top:2px">${statusLabel}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;font-weight:600;color:${dotColor}">${new Date(t.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+          <div style="font-size:10px;color:${dotColor}">${t.pendingApproval?'Pending':due}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    tasksHtml+=`<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px">No active tasks right now.</div>`;
+  }
+
+  const monthName=now.toLocaleDateString('en-US',{month:'long'});
+  tasksHtml+=`<div style="height:16px"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div class="mywork-col-label" style="margin-bottom:0">Completed — ${monthName}</div>${completedHistory.length?`<button class="btn btn-sm" onclick="toggleCompletedHistory(this)" data-open="0" style="font-size:10px">🕐 History (${completedHistory.length})</button>`:''}</div>`;
+  if(completedThisMonth.length) {
+    tasksHtml+=completedThisMonth.map(t=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f0f9f4;border:1px solid #b8dfc9;border-radius:10px;margin-bottom:6px;opacity:0.85">
+        <span style="font-size:16px;flex-shrink:0">✅</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;text-decoration:line-through;color:var(--muted)">${t.name}</div>
+          <div style="font-size:11px;color:var(--muted)">📁 ${t.projName}</div>
+        </div>
+        <div style="font-size:10px;color:var(--green);font-weight:600">Done</div>
+      </div>`).join('');
+  } else {
+    tasksHtml+=`<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px">None completed this month yet.</div>`;
+  }
+  if(completedHistory.length) {
+    tasksHtml+=`<div id="completedHistoryList" style="display:none">`+completedHistory.map(t=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;opacity:0.6">
+        <span style="font-size:16px;flex-shrink:0">✅</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;text-decoration:line-through;color:var(--muted)">${t.name}</div>
+          <div style="font-size:11px;color:var(--muted)">📁 ${t.projName}</div>
+        </div>
+        <div style="font-size:10px;color:var(--muted)">${new Date(t.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      </div>`).join('')+`</div>`;
+  }
+  document.getElementById('myworkTasks').innerHTML=tasksHtml;
+
+  const myNotes=notifications.filter(n=>n.toPersonId===currentUser.id).sort((a,b)=>b.createdAt-a.createdAt);
+  let notifsHtml=`<div class="mywork-col-label">Recent Updates</div>`;
+  if(myNotes.length) {
+    notifsHtml+=myNotes.slice(0,20).map(n=>{
+      const age=Math.round((Date.now()-n.createdAt)/3600000);
+      const ageLabel=age<1?'just now':age<24?age+'h ago':Math.round(age/24)+'d ago';
+      let icon='📋',msg='';
+      if(n.type==='task_assigned'){icon='📌';msg=`Assigned: <strong>${n.data.delivName}</strong> on ${n.data.projName}${n.data.date?' — due '+new Date(n.data.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}`;}
+      else if(n.type==='task_submitted'){icon='⏳';msg=`You submitted <strong>${n.data.delivName}</strong> for PM approval`;}
+      else if(n.type==='task_approved'){icon='✅';msg=`<strong>${n.data.delivName}</strong> approved by ${n.data.pmName}`;}
+      else if(n.type==='task_rejected'){icon='↩️';msg=`<strong>${n.data.delivName}</strong> sent back by ${n.data.pmName}`;}
+      else if(n.type==='task_pending_pm'){icon='🔔';msg=`<strong>${n.data.assigneeName}</strong> submitted <strong>${n.data.delivName}</strong> for your approval`;}
+      else if(n.type==='tagged'){icon='🏷️';msg=`<strong>${n.data.fromName}</strong> tagged you: <em>${n.data.message}</em>`;}
+      return `<div style="display:flex;gap:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px"><span style="font-size:15px;flex-shrink:0;margin-top:1px">${icon}</span><div style="flex:1;min-width:0"><div style="font-size:12px;line-height:1.5">${msg}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${ageLabel}</div></div></div>`;
+    }).join('');
+  } else {
+    notifsHtml+=`<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px">No updates yet.</div>`;
+  }
+  notifsHtml+=`<div style="margin-top:16px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+    <div class="mywork-col-label" style="margin-bottom:8px">@ Tag a Colleague</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Notify a team member directly.</div>
+    <select id="tagPerson" style="width:100%;padding:7px 10px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);margin-bottom:8px">
+      <option value="">— Select person —</option>
+      ${team.filter(t=>t.id!==currentUser.id).map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
+    </select>
+    <textarea id="tagMessage" rows="2" placeholder="e.g. Please review the Dibbeen ESIA draft by Thursday" style="width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);resize:vertical;box-sizing:border-box;margin-bottom:8px"></textarea>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="sendTag()">Send Notification</button>
+  </div>`;
+  document.getElementById('myworkNotifs').innerHTML=notifsHtml;
+
+  const myProjects=projects.filter(p=>p.members.some(m=>m.personId===currentUser.id));
+  document.getElementById('myworkSubtitle').textContent=myProjects.length?`Across ${myProjects.length} project${myProjects.length>1?'s':''}` :'';
+}
+
+function toggleCompletedHistory(btn) {
+  const el=document.getElementById('completedHistoryList'); if(!el) return;
+  const open=btn.getAttribute('data-open')==='1';
+  el.style.display=open?'none':'block';
+  btn.setAttribute('data-open',open?'0':'1');
+  btn.textContent=open?`🕐 History (${el.children.length})`:'↑ Hide history';
+}
+
+function sendTag() {
+  const toId=parseInt(document.getElementById('tagPerson').value);
+  const msg=document.getElementById('tagMessage').value.trim();
+  if(!toId){showToast('Please select a person to tag');return;}
+  if(!msg){showToast('Please enter a message');return;}
+  addNotification(toId,'tagged',{fromName:currentUser.name,fromId:currentUser.id,message:msg});
+  document.getElementById('tagPerson').value='';
+  document.getElementById('tagMessage').value='';
+  const person=team.find(t=>t.id===toId);
+  showToast(`${person?person.name.split(' ')[0]:'Person'} notified ✓`);
+}
+
+function submitTaskForApproval(projId, delivId, checkbox) {
+  const proj = projects.find(p=>p.id==projId); if(!proj) return;
+  const deliv = (proj.deliverables||[]).find(d=>d.id===delivId); if(!deliv) return;
+  if(checkbox.checked) {
+    deliv.pendingApproval = true; deliv.completed = false;
+    addNotification(proj.creatorId, 'task_pending_pm', {delivName:deliv.name, projName:proj.name, assigneeName:currentUser.name, delivId, projId});
+    addNotification(currentUser.id, 'task_submitted', {delivName:deliv.name, projName:proj.name, delivId, projId});
+    showToast('Submitted for PM approval ✓');
+  } else {
+    deliv.pendingApproval = false; deliv.completed = false;
+    showToast('Submission cancelled');
+  }
+  saveProject(proj); renderWeekly(); updateSummary();
+  setTimeout(()=>renderMyWork(), 80);
+}
+
+function approveDeliverable(projId, delivId, approved) {
+  const proj = projects.find(p=>p.id==projId); if(!proj) return;
+  const deliv = (proj.deliverables||[]).find(d=>d.id===delivId); if(!deliv) return;
+  const pmName = currentUser.name;
+  if(approved) {
+    deliv.completed = true; deliv.pendingApproval = false;
+    if(deliv.assignedTo) addNotification(deliv.assignedTo, 'task_approved', {delivName:deliv.name, projName:proj.name, pmName, delivId, projId});
+    showToast(`${deliv.name} approved ✓`);
+  } else {
+    deliv.pendingApproval = false; deliv.completed = false;
+    if(deliv.assignedTo) addNotification(deliv.assignedTo, 'task_rejected', {delivName:deliv.name, projName:proj.name, pmName, reason:'Please review and resubmit', delivId, projId});
+    showToast(`${deliv.name} sent back for review`);
+  }
+  saveProject(proj); renderWeekly(); updateSummary(); renderProjects();
+  setTimeout(()=>renderMyWork(), 80);
+}
+
+function updateLogThisWeekBtn() {
+  const btn = document.getElementById('logThisWeekBtn');
+  if(!btn||!currentUser) return;
+  const wk = wKey(weekStart(new Date(), weekOffset));
+  const eff = getEffectiveLoad(currentUser.id, wk);
+  btn.style.display = eff.projects.length ? 'inline-flex' : 'none';
+}
+
+function openWeekSummaryModal(wk) {
+  const ws = new Date(wk+'T12:00:00');
+  const we = new Date(ws); we.setDate(we.getDate()+4);
+  document.getElementById('weekSummaryTitle').textContent = fmt(ws,true)+' – '+fmt(we,true);
+  document.getElementById('weekSummaryBody').innerHTML = team.map(p=>{
+    const eff = getEffectiveLoad(p.id, wk);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:28px;height:28px;font-size:11px">${initials(p.name)}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${p.name}</div><div style="font-size:10px;color:var(--muted)">${eff.projects.map(x=>x.name).join(', ')||'No active projects'}</div></div>
+      <div style="text-align:right"><span style="font-size:14px;font-weight:700;color:${loadColor(eff.load)}">${eff.load}%</span><div style="font-size:10px;color:var(--muted)">${chipLabel(eff.load)}</div></div>
+    </div>`;
+  }).join('');
+  openOverlay('weekSummaryModal');
+}
+
+function openOverlay(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id)  { document.getElementById(id).classList.remove('open'); }
+
+function setOverrideUser(p) {
+  document.getElementById('ovPerson').value = p.id;
+  const disp = document.getElementById('ovPersonDisplay');
+  disp.innerHTML = '';
+  const av = document.createElement('div'); av.className='avatar';
+  av.style.cssText='width:28px;height:28px;font-size:11px;background:'+p.c.bg+';color:'+p.c.fg;
+  av.textContent=initials(p.name);
+  const info = document.createElement('div');
+  info.innerHTML='<div style="font-size:13px;font-weight:600">'+p.name+'</div><div style="font-size:11px;color:var(--muted)">'+(p.title||'')+'</div>';
+  disp.appendChild(av); disp.appendChild(info);
+}
+function openWeeklyOverrideModal() {
+  if(!currentUser || isAdmin()) return;
+  setOverrideUser(currentUser);
+  const today = wKey(new Date());
+  document.getElementById('ovStart').value = today;
+  document.getElementById('ovEnd').value = today;
+  const eff = getEffectiveLoad(currentUser.id, wKey(weekStart(new Date(), weekOffset)));
+  document.getElementById('ovLoad').value = eff.load||80;
+  document.getElementById('ovLoadVal').textContent = (eff.load||80)+'%';
+  document.getElementById('ovReason').value = '';
+  updateOvUI(); renderOverrideHistory(currentUser.id); openOverlay('overrideModal');
+}
+function openOverrideForPerson(pid, wk) {
+  if(!currentUser || currentUser.id!==pid) return;
+  setOverrideUser(currentUser);
+  const ws = new Date(wk+'T12:00:00');
+  const we = new Date(ws); we.setDate(we.getDate()+4);
+  document.getElementById('ovStart').value = wk;
+  document.getElementById('ovEnd').value = wKey(we);
+  const eff = getEffectiveLoad(pid, wk);
+  document.getElementById('ovLoad').value = eff.load||80;
+  document.getElementById('ovLoadVal').textContent = (eff.load||80)+'%';
+  document.getElementById('ovReason').value = eff.reason||'';
+  updateOvUI(); renderOverrideHistory(pid); openOverlay('overrideModal');
+}
+function renderOverrideHistory(pid) {
+  const now = Date.now();
+  const eightWeeksAgo = now - 56*24*60*60*1000;
+  overrides = overrides.filter(o => o.personId!==pid || new Date(o.end).getTime() >= eightWeeksAgo);
+  const hist = overrides.filter(o => o.personId===pid && new Date(o.end).getTime() < now)
+    .sort((a,b)=>new Date(b.start)-new Date(a.start)).slice(0,5);
+  const sec = document.getElementById('ovHistorySection');
+  if(!hist.length) { sec.style.display='none'; return; }
+  sec.style.display='block';
+  document.getElementById('ovHistoryList').innerHTML = hist.map(h=>`
+    <div class="override-hist-item">
+      <div>
+        <div style="font-size:12px;font-weight:600">${new Date(h.start+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} → ${new Date(h.end+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+        <div style="font-size:11px;color:var(--muted)">${h.reason||'No reason noted'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;font-weight:700;color:${loadColor(h.load)}">${h.load}%</span>
+        <button class="btn btn-sm btn-danger" onclick="clearOverride('${h.id}')">Clear</button>
+      </div>
+    </div>`).join('');
+}
+function clearOverride(spikeId) {
+  overrides = overrides.filter(o=>o.id!==spikeId);
+  deleteOverrideFromDB(spikeId);
+  renderWeekly(); renderMonthly(); updateSummary();
+  if(currentUser) renderOverrideHistory(currentUser.id);
+  showToast('Busy period cleared');
+}
+function updateOvUI() {
+  const v=parseInt(document.getElementById('ovLoad').value);
+  const el=document.getElementById('ovLoadVal');
+  el.textContent=v+'%'; el.style.color=loadColor(v);
+}
+function saveOverrideForm() {
+  if(!currentUser) return;
+  const pid = currentUser.id;
+  const start = document.getElementById('ovStart').value;
+  const end = document.getElementById('ovEnd').value;
+  const load = parseInt(document.getElementById('ovLoad').value);
+  const reason = document.getElementById('ovReason').value.trim();
+  if(!start||!end) { showToast('Please set a start and end date'); return; }
+  if(new Date(end) < new Date(start)) { showToast('End date must be after start date'); return; }
+  const newOv = {id:'sp'+Date.now(), personId:pid, start, end, load, reason, savedAt:Date.now()};
+  overrides.push(newOv);
+  closeModal('overrideModal');
+  renderWeekly(); renderMonthly(); updateSummary();
+  saveOverride(newOv);
+  if(!document.getElementById('view-finder').classList.contains('hidden')) renderFinder();
+  showToast('Busy period saved ✓');
+}
+
+function openAddProjectModal() {
+  document.getElementById('pjName').value='';
+  document.getElementById('pjClient').value='';
+  document.getElementById('pjStart').value='';
+  const endInput = document.getElementById('pjEnd');
+  endInput.value=''; endInput.min='';
+  document.getElementById('pjStart').onchange = function() {
+    if(this.value) { endInput.min = this.value; if(endInput.value && endInput.value<=this.value) endInput.value=''; }
+  };
+  document.getElementById('pjNotes').value='';
+  const wrap=document.getElementById('pjMembersWrap');
+  wrap.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:8px">Assign Team Members</div>`+
+    team.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:26px;height:26px;font-size:10px">${initials(p.name)}</div>
+        <span style="flex:1;font-size:13px;font-weight:500">${p.name}</span>
+        <label style="font-size:11px;color:var(--muted)">Allocation:</label>
+        <input type="number" min="0" max="100" step="5" value="0" id="pjAlloc_${p.id}" style="width:65px;text-align:center;padding:5px 8px" placeholder="0%">
+        <span style="font-size:11px;color:var(--muted)">%</span>
+      </div>`).join('');
+  openOverlay('addProjModal');
+}
+
+function getMaxProjectAlloc(personId, start, end, excludeProjectId) {
+  let total = 0;
+  projects.forEach(p => {
+    if(p.id == excludeProjectId) return;
+    if(p.end < start || p.start > end) return;
+    const m = p.members.find(m=>m.personId===personId);
+    if(m && m.allocation>0) total += m.allocation;
+  });
+  return total;
+}
+
+function saveNewProject() {
+  const name=document.getElementById('pjName').value.trim();
+  const client=document.getElementById('pjClient').value.trim();
+  const start=document.getElementById('pjStart').value;
+  const end=document.getElementById('pjEnd').value;
+  if(!name){showToast('⚠ Please enter a project name');return;}
+  if(!start){showToast('⚠ Please set a start date');return;}
+  if(!end){showToast('⚠ Please set an end date');return;}
+  if(end<=start){showToast('⚠ End date must be after start date');return;}
+  const creatorId = currentUser ? currentUser.id : (team[0]?.id||1);
+  const members=[]; let blockingErrors=[];
+  team.forEach(p=>{
+    const v=parseInt(document.getElementById('pjAlloc_'+p.id).value)||0;
+    if(v<=0) return;
+    if(v>100){blockingErrors.push(`${p.name.split(' ')[0]}: allocation cannot exceed 100%`);return;}
+    const existingLoad=getMaxProjectAlloc(p.id,start,end,null);
+    if(existingLoad+v>100){blockingErrors.push(`${p.name.split(' ')[0]}: already at ${existingLoad}% — adding ${v}% would exceed 100%`);return;}
+    members.push({personId:p.id,allocation:v,role:p.id===creatorId?'pm':'coordinator'});
+  });
+  if(blockingErrors.length){showToast('⚠ Cannot save:\n'+blockingErrors.join('\n'),6000);return;}
+  if(!members.find(m=>m.personId===creatorId)) members.unshift({personId:creatorId,allocation:0,role:'pm'});
+  else members.find(m=>m.personId===creatorId).role='pm';
+  const newProj = {id:Date.now(),name,client,start,end,creatorId,notes:document.getElementById('pjNotes').value.trim(),deliverables:[],members};
+  projects.push(newProj);
+  closeModal('addProjModal');
+  saveProject(newProj);
+  renderProjects(); renderWeekly(); renderMonthly(); updateSummary();
+  showToast(`${name} added ✓`);
+}
+
+function openAssignMember(projId) {
+  const proj=projects.find(p=>p.id===projId);
+  if(!canEditProject(proj)){showNoAccess(proj.id,proj.creatorId);return;}
+  assigningProjectId=projId;
+  document.getElementById('assignProjLabel').textContent=`Assign to: ${proj.name}`;
+  const sel=document.getElementById('assignPerson');
+  sel.innerHTML=team.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('assignAlloc').value=50;
+  document.getElementById('assignAllocVal').textContent='50%';
+  document.getElementById('allocWarning').style.display='none';
+  openOverlay('addProjMemberModal');
+}
+function saveAssignment() {
+  const pid=parseInt(document.getElementById('assignPerson').value);
+  const alloc=parseInt(document.getElementById('assignAlloc').value);
+  const proj=projects.find(p=>p.id===assigningProjectId);
+  const existing=proj.members.find(m=>m.personId===pid);
+  if(existing) existing.allocation=alloc;
+  else proj.members.push({personId:pid,allocation:alloc,role:'coordinator'});
+  closeModal('addProjMemberModal');
+  saveProject(proj);
+  renderProjects(); renderWeekly(); renderMonthly(); updateSummary();
+  showToast('Member assigned ✓');
+}
+
+let editingDeliverableProjectId=null, editingDeliverableId=null;
+function populateDelivAssign(selectId, proj, selectedId) {
+  const sel=document.getElementById(selectId);
+  sel.innerHTML=`<option value="">— Unassigned —</option>`+
+    proj.members.map(m=>{
+      const p=team.find(t=>t.id===m.personId); if(!p) return '';
+      return `<option value="${p.id}"${p.id===selectedId?' selected':''}>${p.name}</option>`;
+    }).join('');
+}
+
+function saveEditDeliverable() {
+  const proj=projects.find(p=>p.id===editingDeliverableProjectId);
+  const deliv=(proj.deliverables||[]).find(d=>d.id===editingDeliverableId);
+  if(!deliv) return;
+  const newDate=document.getElementById('editDelivDate').value;
+  const newName=document.getElementById('editDelivName').value.trim();
+  if(!newName){showToast('⚠ Please enter a deliverable name');return;}
+  if(!newDate){showToast('⚠ Please set a due date');return;}
+  if(newDate<proj.start){showToast(`⚠ Due date cannot be before project start (${proj.start})`);return;}
+  if(newDate>proj.end){showToast(`⚠ Due date cannot be after project end (${proj.end})`);return;}
+  const newEffort=parseInt(document.getElementById('editDelivEffort').value)||5;
+  const projWorkDays=Math.round((new Date(proj.end)-new Date(proj.start))/86400000*5/7);
+  if(newEffort<1){showToast('⚠ Effort must be at least 1 day');return;}
+  if(newEffort>projWorkDays){showToast(`⚠ Effort (${newEffort} days) exceeds project duration (~${projWorkDays} working days)`);return;}
+  const oldAssignee=deliv.assignedTo;
+  deliv.name=newName; deliv.date=newDate; deliv.effortDays=newEffort;
+  const assignedVal=document.getElementById('editDelivAssigned').value;
+  deliv.assignedTo=assignedVal?parseInt(assignedVal):null;
+  proj.deliverables.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(deliv.assignedTo && deliv.assignedTo!==oldAssignee) {
+    addNotification(deliv.assignedTo,'task_assigned',{delivName:deliv.name,projName:proj.name,date:deliv.date,delivId:deliv.id,projId:proj.id});
+  }
+  closeModal('editDelivModal');
+  saveProject(proj);
+  renderProjects(); renderMonthly(); renderWeekly(); updateSummary();
+  showToast('Deliverable updated ✓');
+}
+function deleteDeliverableFromEdit() {
+  const proj=projects.find(p=>p.id===editingDeliverableProjectId);
+  proj.deliverables=(proj.deliverables||[]).filter(d=>d.id!==editingDeliverableId);
+  closeModal('editDelivModal');
+  saveProject(proj);
+  renderProjects(); renderMonthly();
+  showToast('Deliverable removed');
+}
+
+function openEditDeliverable(projId, delivId) {
+  const proj=projects.find(p=>p.id===projId);
+  if(!canEditProject(proj)){showNoAccess(proj.id,proj.creatorId);return;}
+  editingDeliverableProjectId=projId; editingDeliverableId=delivId;
+  const deliv=(proj.deliverables||[]).find(d=>d.id===delivId); if(!deliv) return;
+  document.getElementById('editDelivProjLabel').textContent=`Project: ${proj.name} (${proj.start} → ${proj.end})`;
+  document.getElementById('editDelivName').value=deliv.name;
+  const dateInput=document.getElementById('editDelivDate');
+  dateInput.value=deliv.date; dateInput.min=proj.start; dateInput.max=proj.end;
+  document.getElementById('editDelivEffort').value=deliv.effortDays||5;
+  populateDelivAssign('editDelivAssigned',proj,deliv.assignedTo||null);
+  openOverlay('editDelivModal');
+}
+
+let addingDeliverableToProjectId=null;
+function openAddDeliverable(projId) {
+  const proj=projects.find(p=>p.id===projId);
+  if(!canEditProject(proj)){showNoAccess(proj.id,proj.creatorId);return;}
+  addingDeliverableToProjectId=projId;
+  document.getElementById('delivProjLabel').textContent=`Project: ${proj.name} (${proj.start} → ${proj.end})`;
+  document.getElementById('delivName').value='';
+  const dateInput=document.getElementById('delivDate');
+  dateInput.value=''; dateInput.min=proj.start; dateInput.max=proj.end;
+  populateDelivAssign('delivAssigned',proj,null);
+  openOverlay('addDelivModal');
+}
+function saveDeliverable() {
+  const name=document.getElementById('delivName').value.trim();
+  const date=document.getElementById('delivDate').value;
+  const effortDays=parseInt(document.getElementById('delivEffort').value)||5;
+  if(!name){showToast('⚠ Please enter a deliverable name');return;}
+  if(!date){showToast('⚠ Please set a due date');return;}
+  const proj=projects.find(p=>p.id===addingDeliverableToProjectId);
+  if(date<proj.start){showToast(`⚠ Due date cannot be before project start (${proj.start})`);return;}
+  if(date>proj.end){showToast(`⚠ Due date cannot be after project end (${proj.end})`);return;}
+  const projWorkDays=Math.round((new Date(proj.end)-new Date(proj.start))/86400000*5/7);
+  if(effortDays<1){showToast('⚠ Effort must be at least 1 day');return;}
+  if(effortDays>projWorkDays){showToast(`⚠ Effort (${effortDays} days) exceeds project duration (~${projWorkDays} working days)`);return;}
+  if(!proj.deliverables) proj.deliverables=[];
+  const assignedVal=document.getElementById('delivAssigned').value;
+  const assignedTo=assignedVal?parseInt(assignedVal):null;
+  const newDeliv={id:'d'+Date.now(),name,date,effortDays,assignedTo};
+  proj.deliverables.push(newDeliv);
+  proj.deliverables.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(assignedTo) addNotification(assignedTo,'task_assigned',{delivName:name,projName:proj.name,date,delivId:newDeliv.id,projId:proj.id});
+  closeModal('addDelivModal');
+  saveProject(proj);
+  renderProjects(); renderMonthly(); renderWeekly(); updateSummary();
+  showToast('Deliverable added ✓');
+}
+
+function openAddMemberModal() {
+  if(!canCreateAccounts()){showToast('Only admins can create accounts');return;}
+  document.getElementById('mName').value='';
+  document.getElementById('mTitle').value='';
+  document.getElementById('mPassword').value='';
+  openOverlay('addMemberModal');
+}
+function addMember() {
+  if(!canCreateAccounts()){showToast('Only admins can create accounts');return;}
+  const name=document.getElementById('mName').value.trim();
+  const title=document.getElementById('mTitle').value;
+  const password=document.getElementById('mPassword').value.trim();
+  if(!name){showToast('Please enter a name');return;}
+  if(!title){showToast('Please select a title');return;}
+  if(!password||password.length<4){showToast('Please set a password (min 4 characters)');return;}
+  const newId=Date.now();
+  const newMember = {id:newId,name,title,dept:document.getElementById('mDept').value,c:PALETTE[team.length%PALETTE.length]};
+  team.push(newMember);
+  pins[newId]=password; savePins();
+  saveTeamMember(newMember);
+  populateLoginSelect();
+  closeModal('addMemberModal'); renderWeekly(); updateSummary(); showToast(name+' added ✓');
+}
+
+function openDayModal(dateStr) {
+  const date=new Date(dateStr+'T12:00:00');
+  const wk=wKey(weekStart(date,0));
+  document.getElementById('dayModalTitle').textContent=date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('dayModalBody').innerHTML=team.map(p=>{
+    const eff=getEffectiveLoad(p.id,wk);
+    return `<div class="day-person-row">
+      <div style="display:flex;align-items:flex-start;gap:10px;flex:1">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:28px;height:28px;font-size:10px">${initials(p.name)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">${p.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">${eff.projects.map(x=>`${x.name} (${x.alloc}%)`).join(' · ')||'No active projects'}</div>
+          ${eff.isOverride?`<div style="font-size:10px;color:var(--orange);margin-top:2px">⚡ ${eff.reason}</div>`:''}
+        </div>
+      </div>
+      <div class="day-load-col" ${currentUser&&currentUser.id===p.id?`onclick="openOverrideForPerson(${p.id},'${wk}');closeModal('dayModal')" style="cursor:pointer;text-align:right"`:`style="text-align:right"`}>
+        <div class="day-load-num" style="color:${loadColor(eff.load)}">${eff.load}%</div>
+        ${eff.isOverride
+          ? `<span class="spike-badge">⚡ Spike</span><br><span style="font-size:9px;color:var(--muted)">${eff.baseline}% baseline</span>`
+          : `<span class="chip ${chipClass(eff.load)}">${chipLabel(eff.load)}</span>`}
+      </div>
+    </div>`;
+  }).join('');
+  openOverlay('dayModal');
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE
+// ═══════════════════════════════════════════════
+const SUPABASE_URL  = 'https://wtbjriwumzikkvoetfug.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0YmpyaXd1bXppa2t2b2V0ZnVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MTY2NDYsImV4cCI6MjA4ODI5MjY0Nn0.Mdwg-xJ4uVwJyP4mKs1iBeS6U_BNmTF49fgjqgmxKf8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// Show/hide loading overlay
+function setLoading(on) {
+  document.getElementById('loadingOverlay').style.display = on ? 'flex' : 'none';
+}
+
+// ── SEED: push default data to Supabase if tables are empty ──────
+async function seedIfEmpty() {
+  const { data: existingTeam } = await sb.from('team').select('id').limit(1);
+  if(existingTeam && existingTeam.length > 0) return; // already seeded
+
+  // Seed team
+  const teamRows = team.map((p,i) => ({id:p.id, name:p.name, title:p.title, dept:p.dept, ci:i}));
+  await sb.from('team').insert(teamRows);
+
+  // Seed projects
+  const projRows = projects.map(p => ({
+    id: p.id, name: p.name, client: p.client||'',
+    start_date: p.start, end_date: p.end,
+    creator_id: p.creatorId, notes: p.notes||'',
+    members: p.members, deliverables: p.deliverables||[]
+  }));
+  await sb.from('projects').insert(projRows);
+
+  // Seed overrides
+  if(overrides.length) {
+    const ovRows = overrides.map(o => ({
+      id: o.id, person_id: o.personId,
+      start_date: o.start, end_date: o.end,
+      load: o.load, reason: o.reason||'', saved_at: o.savedAt||Date.now()
+    }));
+    await sb.from('overrides').insert(ovRows);
+  }
+
+  // Seed notifications
+  if(notifications.length) {
+    const notifRows = notifications.map(n => ({
+      id: n.id, to_person_id: n.toPersonId,
+      type: n.type, data: n.data,
+      read_at: n.readAt||null, created_at_ts: n.createdAt
+    }));
+    await sb.from('notifications').insert(notifRows);
+  }
+}
+
+// ── LOAD all data from Supabase ──────────────────────────────────
+async function loadAllData() {
+  const [teamRes, projRes, ovRes, notifRes] = await Promise.all([
+    sb.from('team').select('*').order('id'),
+    sb.from('projects').select('*').order('id'),
+    sb.from('overrides').select('*').order('saved_at'),
+    sb.from('notifications').select('*').order('created_at_ts')
+  ]);
+
+  if(teamRes.data && teamRes.data.length) {
+    team = teamRes.data.map(r => ({
+      id: r.id, name: r.name, title: r.title, dept: r.dept,
+      c: PALETTE[r.ci % PALETTE.length]
+    }));
+  }
+
+  if(projRes.data && projRes.data.length) {
+    projects = projRes.data.map(r => normalizeProject({
+      id: r.id, name: r.name, client: r.client||'',
+      start: r.start_date, end: r.end_date,
+      creatorId: r.creator_id, notes: r.notes||'',
+      members: r.members||[], deliverables: r.deliverables||[]
+    }));
+  }
+
+  if(ovRes.data) {
+    overrides = ovRes.data.map(r => ({
+      id: r.id, personId: r.person_id,
+      start: r.start_date, end: r.end_date,
+      load: r.load, reason: r.reason||'', savedAt: r.saved_at
+    }));
+  }
+
+  if(notifRes.data) {
+    notifications = notifRes.data.map(r => ({
+      id: r.id, toPersonId: r.to_person_id,
+      type: r.type, data: r.data,
+      readAt: r.read_at, createdAt: r.created_at_ts
+    }));
+  }
+}
+
+// ── SAVE helpers (called after each mutation) ────────────────────
+async function saveProject(projObj) {
+  await sb.from('projects').upsert({
+    id: projObj.id, name: projObj.name, client: projObj.client||'',
+    start_date: projObj.start, end_date: projObj.end,
+    creator_id: projObj.creatorId, notes: projObj.notes||'',
+    members: projObj.members, deliverables: projObj.deliverables||[]
+  });
+}
+async function deleteProjectFromDB(id) {
+  await sb.from('projects').delete().eq('id', id);
+}
+async function saveOverride(ovObj) {
+  await sb.from('overrides').upsert({
+    id: ovObj.id, person_id: ovObj.personId,
+    start_date: ovObj.start, end_date: ovObj.end,
+    load: ovObj.load, reason: ovObj.reason||'', saved_at: ovObj.savedAt
+  });
+}
+async function deleteOverrideFromDB(id) {
+  await sb.from('overrides').delete().eq('id', id);
+}
+async function saveNotification(n) {
+  await sb.from('notifications').upsert({
+    id: n.id, to_person_id: n.toPersonId,
+    type: n.type, data: n.data,
+    read_at: n.readAt||null, created_at_ts: n.createdAt
+  });
+}
+async function saveTeamMember(p) {
+  await sb.from('team').upsert({id:p.id, name:p.name, title:p.title, dept:p.dept, ci:team.indexOf(p)});
+}
+async function deleteTeamMemberFromDB(id) {
+  await sb.from('team').delete().eq('id', id);
+}
+async function markNotifsRead(ids) {
+  if(!ids.length) return;
+  await sb.from('notifications').update({read_at: Date.now()}).in('id', ids);
+}
+
+// ── REALTIME: subscribe to all table changes ─────────────────────
+function subscribeRealtime() {
+  sb.channel('all-changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:'projects'}, async () => {
+      await reloadProjects(); renderWeekly(); renderMonthly(); renderProjects(); updateSummary();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'team'}, async () => {
+      await reloadTeam(); renderWeekly(); updateSummary(); populateLoginSelect();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'overrides'}, async () => {
+      await reloadOverrides(); renderWeekly(); updateSummary();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'notifications'}, async () => {
+      await reloadNotifications(); updateInboxBadge();
+      if(!document.getElementById('view-mywork').classList.contains('hidden')) renderMyWork();
+    })
+    .subscribe();
+}
+
+async function reloadProjects() {
+  const {data} = await sb.from('projects').select('*').order('id');
+  if(data) projects = data.map(r => normalizeProject({
+    id:r.id, name:r.name, client:r.client||'', start:r.start_date, end:r.end_date,
+    creatorId:r.creator_id, notes:r.notes||'', members:r.members||[], deliverables:r.deliverables||[]
+  }));
+}
+async function reloadTeam() {
+  const {data} = await sb.from('team').select('*').order('id');
+  if(data) team = data.map(r => ({id:r.id,name:r.name,title:r.title,dept:r.dept,c:PALETTE[r.ci%PALETTE.length]}));
+}
+async function reloadOverrides() {
+  const {data} = await sb.from('overrides').select('*').order('saved_at');
+  if(data) overrides = data.map(r => ({id:r.id,personId:r.person_id,start:r.start_date,end:r.end_date,load:r.load,reason:r.reason||'',savedAt:r.saved_at}));
+}
+async function reloadNotifications() {
+  const {data} = await sb.from('notifications').select('*').order('created_at_ts');
+  if(data) notifications = data.map(r => ({id:r.id,toPersonId:r.to_person_id,type:r.type,data:r.data,readAt:r.read_at,createdAt:r.created_at_ts}));
+}
+
+// Legacy stub — no longer needed but kept so nothing breaks
+function saveAllData() {}
+
+function renderAll() { renderWeekly(); renderMonthly(); renderProjects(); updateSummary(); }
+
+// ── INIT ─────────────────────────────────────────────────────────
+window.addEventListener('load', async function() {
+  document.querySelectorAll('.overlay').forEach(function(o) {
+    o.addEventListener('click', function(e){ if(e.target===o) o.classList.remove('open'); });
+  });
+
+  setLoading(true);
+  try {
+    await seedIfEmpty();
+    await loadAllData();
+  } catch(e) {
+    console.error('Failed to load data:', e);
+    showToast('⚠ Could not connect to database');
+  }
+  setLoading(false);
+
+  loadPins();
+  populateLoginSelect();
+  loadPersistedSession();
+  subscribeRealtime();
+  
+});
+</script>
+</body>
+</html>
