@@ -463,15 +463,15 @@ select option{background:#fff}
     </div>
   </div>
   <div class="header-actions">
-    <div class="legend">
+    <div class="legend" id="headerLegend">
       <div class="legend-item"><div class="ldot" style="background:#b8dfc9"></div> Available</div>
       <div class="legend-item"><div class="ldot" style="background:#f9d97a"></div> Busy</div>
       <div class="legend-item"><div class="ldot" style="background:#f5a9a3"></div> Full</div>
       <div class="legend-item"><span class="spike-badge">⚡ Spike</span> Weekly override</div>
     </div>
-    <button class="btn btn-accent" onclick="switchTab('finder',document.querySelectorAll('.tab')[4])">🔍 Find Capacity</button>
+    <button class="btn btn-accent" id="headerFindCapBtn" onclick="switchTab('finder',document.querySelectorAll('.tab')[4])">🔍 Find Capacity</button>
     <button class="btn btn-primary" id="logThisWeekBtn" onclick="openWeeklyOverrideModal()">⚡ Log This Week</button>
-    <button class="btn" onclick="openAddProjectModal()">+ New Project</button>
+    <button class="btn" id="headerNewProjBtn" onclick="openAddProjectModal()">+ New Project</button>
     <div style="position:relative">
       <div class="user-pill" onclick="toggleUserMenu()" id="userPill">
         <div class="avatar" id="userAvatar" style="width:26px;height:26px;font-size:10px"></div>
@@ -991,7 +991,7 @@ const TITLES = ['Intern','Associate','Senior Associate','Consultant','Senior Con
 
 const HR_USER = {id:9999, name:'HR', title:'HR', dept:'HR', c:{bg:'#e8f0fc',fg:'#2563b0'}};
 
-function isAdmin()   { return currentUser && currentUser.title === 'E&S Director'; }
+function isAdmin()   { return currentUser && currentUser.id === 1; } // Admin = Ibrahim (id 1)
 function isHR()      { return currentUser && currentUser.id === 9999; }
 function isPartner()     { return currentUser && currentUser.title === 'E&S Director'; }
 function canEditProject(proj) {
@@ -1627,7 +1627,7 @@ function populateLoginSelect() {
     getLoginUsers().map(p=>`<option value="${p.id}">${p.name}${isAdminUser(p)?' (Admin)':''}</option>`).join('');
 }
 
-function isAdminUser(p) { return p.title === 'E&S Director'; }
+function isAdminUser(p) { return p.id === 1; } // Admin = Ibrahim (id 1)
 
 function showPwField() {
   const val=document.getElementById('loginSelect').value;
@@ -1668,18 +1668,21 @@ function applyLogin() {
   // Reset notes to this user's own sections
   currentNoteSection = null;
 
-  // HR sees only timesheet tab
+  // HR sees only timesheet tab, no header action buttons
   const allTabs = document.querySelectorAll('#mainTabs .tab');
+  const hrBtnsToHide = ['headerFindCapBtn','headerNewProjBtn','headerLegend','logThisWeekBtn'];
   if(isHR()) {
     allTabs.forEach(t=>{
       const view = t.getAttribute('data-view');
       t.style.display = view==='timesheet' ? '' : 'none';
     });
+    hrBtnsToHide.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
     const tsTab = document.querySelector('[data-view="timesheet"]');
     if(tsTab) switchTab('timesheet', tsTab);
     document.getElementById('userMenuSettings').style.display='none';
   } else {
     allTabs.forEach(t=>t.style.display='');
+    hrBtnsToHide.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=''; });
     document.getElementById('userMenuSettings').style.display='';
     updateSummary();
     renderWeekly();
