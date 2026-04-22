@@ -27,7 +27,8 @@
   --shadow-lg: 0 4px 20px rgba(0,0,0,0.1);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+html { scrollbar-gutter: stable; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-y:scroll; }
 
 /* HEADER */
 .header {
@@ -3006,34 +3007,39 @@ async function loadUserTimesheet() {
   if(!month) return;
   const personId=currentUser.id;
   const id=String(personId)+'_'+month;
-  // Show inline spinner inside matrix, not full-screen overlay
+  // Show inline spinner — never blocks the tab switch
   const matrix=document.getElementById('tsMatrix');
-  if(matrix) matrix.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)"><div style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>Loading…</div>';
+  if(matrix) matrix.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)"><div style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>Loading timesheet…</div>';
   try {
-    const {data,error}=await sb.from('timesheets').select('*').eq('id',id).maybeSingle();
-    tsData=data||{id,person_id:personId,month,columns:[],rows:{},submitted:false,locked:false};
+    // Race Supabase against a 6s timeout so spinner never hangs forever
+    const fetchPromise = sb.from('timesheets').select('*').eq('id',id).maybeSingle();
+    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),6000));
+    const {data} = await Promise.race([fetchPromise, timeoutPromise]).catch(()=>({data:null}));
+    tsData = data || {id, person_id:personId, month, columns:[], rows:{}, submitted:false, locked:false};
   } catch(e) {
-    tsData={id,person_id:personId,month,columns:[],rows:{},submitted:false,locked:false};
+    tsData = {id, person_id:personId, month, columns:[], rows:{}, submitted:false, locked:false};
   }
-  populateTsColDropdown();
-  renderTsMatrix();
-  updateTsStatus();
+  // Always run these — wrapped so one crash doesn't block the others
+  try { populateTsColDropdown(); } catch(e) { console.warn('populateTsColDropdown error:', e); }
+  try { renderTsMatrix(); } catch(e) { console.warn('renderTsMatrix error:', e); if(matrix) matrix.innerHTML='<div style="padding:20px;color:var(--muted);text-align:center">Could not render timesheet. Try reloading.</div>'; }
+  try { updateTsStatus(); } catch(e) { console.warn('updateTsStatus error:', e); }
 }
 
 function populateTsColDropdown() {
+  if(!currentUser||!tsData) return;
   const sel=document.getElementById('tsColSel');
   const otherInp=document.getElementById('tsOtherName');
-  // Projects assigned to this user
-  const myProjects=projects.filter(p=>p.members.some(m=>m.personId===currentUser.id));
+  if(!sel) return;
+  // Use String() for all ID comparisons — prevents number vs string mismatch
+  const uid=String(currentUser.id);
+  const myProjects=projects.filter(p=>(p.members||[]).some(m=>String(m.personId)===uid));
   const existingIds=new Set((tsData.columns||[]).map(c=>c.projectId||c.name));
   sel.innerHTML=`<option value="">＋ Add project column…</option>`+
     myProjects.filter(p=>!existingIds.has(String(p.id))).map(p=>`<option value="proj_${p.id}">${p.name}</option>`).join('')+
     `<option value="leave">Annual Leave</option>`+
     `<option value="sick">Sick Leave</option>`+
     `<option value="other">Other (custom)…</option>`;
-  sel.onchange=function(){
-    otherInp.style.display=this.value==='other'?'':'none';
-  };
+  if(otherInp) sel.onchange=function(){ otherInp.style.display=this.value==='other'?'':'none'; };
 }
 
 function tsAddColumn() {
@@ -3041,10 +3047,10 @@ function tsAddColumn() {
   const val=sel.value; if(!val) return;
   let col;
   if(val.startsWith('proj_')) {
-    const pid=parseInt(val.replace('proj_',''));
-    const proj=projects.find(p=>p.id===pid);
-    if(!proj) return;
-    col={id:'col'+Date.now(),name:proj.name,type:'project',projectId:String(pid)};
+    const pidStr=val.replace('proj_','');
+    const proj=projects.find(p=>String(p.id)===pidStr);
+    if(!proj){showToast('Project not found');return;}
+    col={id:'col'+Date.now(),name:proj.name,type:'project',projectId:pidStr};
   } else if(val==='other') {
     const custom=document.getElementById('tsOtherName').value.trim();
     if(!custom){showToast('Please enter a label');return;}
@@ -3118,11 +3124,11 @@ function renderTsMatrix() {
           : `<td style="${tdStyle}"><input type="number" min="0" max="24" step="0.5" value="${val}"
               style="width:70px;padding:4px;text-align:center;border:1px solid var(--border);border-radius:5px;
               background:${isWeekend?'#f0ede8':'var(--surface)'};font-size:12px;color:var(--text)"
-              onchange="updateTsCell('${dateStr}','${c.id}',this.value)"
+              oninput="updateTsCell('${dateStr}','${c.id}',this.value)"
               ></td>`;
       }).join('')}
       ${!cols.length?`<td style="${tdStyle};color:var(--muted)">—</td>`:''}
-      <td style="${tdStyle};font-weight:600;${totalColor}">${rowTotal>0?rowTotal:'—'}</td>
+      <td id="ts-rowtotal-${dateStr}" style="${tdStyle};font-weight:600;${totalColor}">${rowTotal>0?rowTotal:'—'}</td>
     </tr>`;
   }
 
@@ -3138,9 +3144,9 @@ function renderTsMatrix() {
   const grandTotal=colTotals.reduce((a,b)=>a+b,0);
   html+=`<tr style="background:var(--surface2);font-weight:700">
     <td style="${tdStyle};text-align:left;position:sticky;left:0;background:var(--surface2)" colspan="2">Monthly Total</td>
-    ${colTotals.map(t=>`<td style="${tdStyle};color:var(--green);font-weight:700">${t>0?t:'—'}</td>`).join('')}
+    ${colTotals.map((t,i)=>`<td id="ts-coltotal-${cols[i].id}" style="${tdStyle};color:var(--green);font-weight:700">${t>0?t:'—'}</td>`).join('')}
     ${!cols.length?`<td style="${tdStyle}">—</td>`:''}
-    <td style="${tdStyle};color:var(--text);font-weight:700">${grandTotal>0?grandTotal:'—'}</td>
+    <td id="ts-grandtotal" style="${tdStyle};color:var(--text);font-weight:700">${grandTotal>0?grandTotal:'—'}</td>
   </tr>`;
 
   html+=`</tbody></table>`;
@@ -3152,11 +3158,33 @@ function updateTsCell(dateStr, colId, val) {
   if(!tsData.rows[dateStr]) tsData.rows[dateStr]={};
   const num=parseFloat(val)||0;
   if(num>8) showToast('⚠ More than 8 hours on one day — please double check');
-  tsData.rows[dateStr][colId]=num||undefined;
-  if(!num) delete tsData.rows[dateStr][colId];
-  // Update total column in same row
-  const row=document.querySelector(`[data-date="${dateStr}"]`);
-  renderTsMatrix(); // re-render to update totals (lightweight since no DB call)
+  if(num) tsData.rows[dateStr][colId]=num;
+  else delete tsData.rows[dateStr][colId];
+
+  // Update ONLY the row total and monthly total cells — no full re-render
+  const cols=tsData.columns||[];
+  const rowData=tsData.rows[dateStr]||{};
+  const rowTotal=cols.reduce((s,c)=>s+(parseFloat(rowData[c.id])||0),0);
+  const isOverday=rowTotal>8;
+  const totalColor=isOverday?'color:var(--red);font-weight:700':rowTotal>0?'color:var(--green)':'color:var(--muted)';
+
+  // Update row total cell
+  const rowTotalCell=document.getElementById('ts-rowtotal-'+dateStr);
+  if(rowTotalCell){
+    rowTotalCell.style.cssText=`padding:4px 6px;border:1px solid var(--border);text-align:center;font-weight:600;${totalColor}`;
+    rowTotalCell.textContent=rowTotal>0?rowTotal:'—';
+  }
+
+  // Update column totals
+  cols.forEach(c=>{
+    const colTotal=Object.values(tsData.rows||{}).reduce((s,r)=>s+(parseFloat(r[c.id])||0),0);
+    const footCell=document.getElementById('ts-coltotal-'+c.id);
+    if(footCell) footCell.textContent=colTotal>0?colTotal:'—';
+  });
+  const grandTotal=cols.reduce((s,c)=>s+Object.values(tsData.rows||{}).reduce((ss,r)=>ss+(parseFloat(r[c.id])||0),0),0);
+  const grandCell=document.getElementById('ts-grandtotal');
+  if(grandCell) grandCell.textContent=grandTotal>0?grandTotal:'—';
+
   saveTsDraft();
 }
 
@@ -3169,17 +3197,21 @@ function removeTsCol(colId) {
   saveTsDraft();
 }
 
+let tsSaveTimer=null;
 async function saveTsDraft() {
   if(!tsData||tsData.locked) return;
-  await sb.from('timesheets').upsert({
-    id:String(tsData.id),
-    person_id:String(tsData.person_id),
-    month:tsData.month,
-    columns:tsData.columns,
-    rows:tsData.rows,
-    submitted:false,
-    locked:false
-  });
+  clearTimeout(tsSaveTimer);
+  tsSaveTimer=setTimeout(async()=>{
+    await sb.from('timesheets').upsert({
+      id:String(tsData.id),
+      person_id:String(tsData.person_id),
+      month:tsData.month,
+      columns:tsData.columns,
+      rows:tsData.rows,
+      submitted:false,
+      locked:false
+    });
+  }, 600);
 }
 
 function updateTsStatus() {
@@ -3231,8 +3263,9 @@ async function loadHRTimesheets() {
   const month=document.getElementById('hrMonthSel').value;
   const container=document.getElementById('tsHRList');
   if(container) container.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)"><div style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>Loading…</div>';
-  const {data: tsAll}=await sb.from('timesheets').select('*').like('id','%_'+month);
-  const data=tsAll;
+  const {data: tsAll}=await sb.from('timesheets').select('*');
+  // Filter in JS — avoids SQL LIKE underscore wildcard issues
+  const data=(tsAll||[]).filter(s=>s.id&&s.id.endsWith('_'+month));
   renderHRList(data||[], month);
 }
 
@@ -3254,7 +3287,7 @@ function renderHRList(sheets, month) {
           <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:32px;height:32px">${initials(p.name)}</div>
           <div style="flex:1">
             <div style="font-weight:600;font-size:13px">${p.name}</div>
-            <div style="font-size:11px;color:var(--muted)">${p.title}</div>
+            <div style="font-size:11px;color:var(--muted)">${p.title||''}</div>
           </div>
           <span style="background:${statusBg};color:${statusColor};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600">${status}</span>
         </div>
@@ -3287,15 +3320,15 @@ async function hrExportOne(personId, month) {
 
 async function exportAllTimesheets(individual) {
   const month=document.getElementById('hrMonthSel').value;
-  setLoading(true);
-  const {data: tsAll}=await sb.from('timesheets').select('*').like('id','%_'+month);
-  const data=tsAll;
-  setLoading(false);
+  showToast('Preparing export…');
+  const {data: tsAll}=await sb.from('timesheets').select('*');
+  // Filter in JS — avoids SQL LIKE underscore wildcard issues
+  const data=(tsAll||[]).filter(s=>s.id&&s.id.endsWith('_'+month));
   const sheets=data||[];
 
   if(individual) {
     sheets.forEach(s=>{
-      const person=team.find(p=>p.id===s.person_id);
+      const person=team.find(p=>String(p.id)===String(s.person_id));
       const wb=XLSX.utils.book_new();
       // Summary
       const sumWs=buildTsSummarySheet([s],team,month);
@@ -3311,7 +3344,7 @@ async function exportAllTimesheets(individual) {
     XLSX.utils.book_append_sheet(wb,sumWs,'Summary');
     // Individual sheets
     sheets.forEach(s=>{
-      const person=team.find(p=>p.id===s.person_id);
+      const person=team.find(p=>String(p.id)===String(s.person_id));
       const ws=buildTsSheet(s,person?person.name:'Unknown');
       XLSX.utils.book_append_sheet(wb,ws,(person?person.name.split(' ')[0]:'Person')||'Sheet');
     });
