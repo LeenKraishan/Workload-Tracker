@@ -212,12 +212,18 @@ select option{background:#fff}
 
 /* LOGIN SCREEN */
 .login-screen {
-position:fixed;inset:0;background:var(–bg);z-index:1000;
+position:fixed;inset:0;
+background:#f5f2ee; /* solid fallback — don’t rely on CSS var for critical overlay */
+background:var(–bg);
+z-index:9999; /* above everything including loading overlay */
 display:flex;align-items:center;justify-content:center;
+-webkit-overflow-scrolling:touch;
 }
 .login-card {
+background:#ffffff;
 background:var(–surface);border:1px solid var(–border);border-radius:16px;
-padding:40px;width:400px;max-width:95vw;box-shadow:var(–shadow-lg);text-align:center;
+padding:40px;width:400px;max-width:92vw;box-shadow:var(–shadow-lg);text-align:center;
+position:relative;z-index:1; /* ensure card sits above login-screen bg */
 }
 /* .login-logo removed — using ECO Consult image */
 .login-card h2 { font-family:‘Fraunces’,serif;font-size:22px;font-weight:700;margin-bottom:6px; }
@@ -374,7 +380,7 @@ cursor:default;transition:background 0.15s;
 
 <!-- LOADING OVERLAY -->
 
-<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:#f5f2ee;z-index:8000;align-items:center;justify-content:center;flex-direction:column;gap:16px">
   <div style="width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite"></div>
   <div style="font-family:'Fraunces',serif;font-size:16px;color:var(--text2)">Loading…</div>
 </div>
