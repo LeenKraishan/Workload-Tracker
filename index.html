@@ -831,7 +831,7 @@ select option{background:#fff}
     <p class="modal-sub">Projects set the baseline workload automatically across their entire duration</p>
     <div class="two-col">
       <div class="field"><label>Project Name</label><input type="text" id="pjName" placeholder="e.g. Dibbeen Jerash"></div>
-      <div class="field"><label>Client</label><input type="text" id="pjClient" placeholder="e.g. RSCN"></div>
+      <div class="field"><label>Client</label><input type="text" id="pjClient" placeholder="e.g. Sama Dibbeen"></div>
     </div>
     <div class="two-col">
       <div class="field"><label>Start Date</label><input type="date" id="pjStart"></div>
@@ -987,13 +987,13 @@ let tsData = null;
 const TS_WORKDAYS = [0,1,2,3,4]; // Sun=0 Mon=1 Tue=2 Wed=3 Thu=4 (Jordan workweek)
 let assigningProjectId = null;
 
-const TITLES = ['Intern','Analyst','Senior Analyst','Consultant','Senior Consultant','Manager','Partner'];
+const TITLES = ['Intern','Associate','Senior Associate','Consultant','Senior Consultant','Manager','E&S Director'];
 
 const HR_USER = {id:9999, name:'HR', title:'HR', dept:'HR', c:{bg:'#e8f0fc',fg:'#2563b0'}};
 
-function isAdmin()   { return currentUser && currentUser.title === 'Partner'; }
+function isAdmin()   { return currentUser && currentUser.title === 'E&S Director'; }
 function isHR()      { return currentUser && currentUser.id === 9999; }
-function isPartner() { return currentUser && currentUser.title === 'Partner'; }
+function isPartner()     { return currentUser && currentUser.title === 'E&S Director'; }
 function canEditProject(proj) {
   if(!currentUser) return false;
   if(isAdmin() || isPartner()) return true;
@@ -1002,7 +1002,7 @@ function canEditProject(proj) {
 function canCreateAccounts() { return isAdmin(); }
 
 let team = [
-  {id:1, name:'Ibrahim Masri', title:'Partner', dept:'ESIA', c:PALETTE[0]},
+  {id:1, name:'Ibrahim Masri', title:'E&S Director', dept:'ESIA', c:PALETTE[0]},
 ];
 
 let currentUser = null;
@@ -1627,7 +1627,7 @@ function populateLoginSelect() {
     getLoginUsers().map(p=>`<option value="${p.id}">${p.name}${isAdminUser(p)?' (Admin)':''}</option>`).join('');
 }
 
-function isAdminUser(p) { return p.title === 'Partner'; }
+function isAdminUser(p) { return p.title === 'E&S Director'; }
 
 function showPwField() {
   const val=document.getElementById('loginSelect').value;
@@ -2461,8 +2461,8 @@ function addMemberRow() {
     <div class="field" style="margin:0"><label style="font-size:11px">Title</label>
       <select class="mr-title" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
         <option value="">— Title —</option>
-        <option>Intern</option><option>Analyst</option><option>Senior Analyst</option>
-        <option>Consultant</option><option>Senior Consultant</option><option>Manager</option><option>Partner</option>
+        <option>Intern</option><option>Associate</option><option>Senior Associate</option>
+        <option>Consultant</option><option>Senior Consultant</option><option>Manager</option><option>E&S Director</option>
       </select>
     </div>
     <button onclick="this.closest('.member-add-row').remove()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:13px;height:36px;margin-bottom:0">✕</button>`;
@@ -3534,7 +3534,7 @@ async function seedIfEmpty() {
   // Only seed if completely empty
   if(allTeam && allTeam.length > 0) return;
   // Seed Ibrahim only as starting point
-  await sb.from('team').insert([{id:1, name:'Ibrahim Masri', title:'Partner', dept:'ESIA', ci:0}]);
+  await sb.from('team').insert([{id:1, name:'Ibrahim Masri', title:'E&S Director', dept:'ESIA', ci:0}]);
 }
 
 // ── LOAD all data from Supabase ──────────────────────────────────
