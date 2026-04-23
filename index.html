@@ -557,7 +557,13 @@ select option{background:#fff}
 
   <div id="view-monthly" class="hidden">
     <div class="section-header">
-      <div class="section-title">Monthly Calendar</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="section-title">Monthly Calendar</div>
+        <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px;font-weight:600">
+          <div id="calFilterAll" onclick="setCalFilter('all')" style="padding:5px 14px;cursor:pointer;background:var(--text);color:#fff;transition:all 0.15s">All</div>
+          <div id="calFilterMine" onclick="setCalFilter('mine')" style="padding:5px 14px;cursor:pointer;color:var(--text2);transition:all 0.15s">My Calendar</div>
+        </div>
+      </div>
       <div class="nav-controls">
         <button class="nav-btn" onclick="shiftMonth(-1)">‹</button>
         <span class="nav-label" id="monthLabel"></span>
@@ -1334,12 +1340,24 @@ function renderMonthly() {
         const wk=wKey(weekStart(cellDate,0));
         const dateStr=wKey(cellDate);
 
-        const deliverablePins=!isOther ? projects.flatMap(proj=>
+        // Filter projects based on calendar filter
+        const uid = currentUser ? currentUser.id : null;
+        const visibleProjects = calFilter==='mine' && uid
+          ? projects.filter(p =>
+              p.creatorId===uid ||
+              (p.members||[]).some(m=>m.personId===uid) ||
+              (p.deliverables||[]).some(d=>d.assignedTo===uid)
+            )
+          : projects;
+
+        const deliverablePins=!isOther ? visibleProjects.flatMap(proj=>
           (proj.deliverables||[]).filter(d=>d.date===dateStr).map(d=>{
+            // In 'mine' mode, additionally highlight items directly assigned to user
+            const isMyTask = uid && d.assignedTo===uid;
             const assignee = d.assignedTo ? team.find(t=>t.id===d.assignedTo) : null;
             const statusIcon = d.completed ? '✅' : d.pendingApproval ? '⏳' : '📌';
             const pinBg = d.completed ? '#f0f9f4' : d.pendingApproval ? '#fff9e6' : '#fefce8';
-            const pinBorder = d.completed ? '#b8dfc9' : d.pendingApproval ? '#ffc107' : '#fde68a';
+            const pinBorder = d.completed ? '#b8dfc9' : d.pendingApproval ? '#ffc107' : isMyTask ? '#2d8f5e' : '#fde68a';
             return `<div class="deliv-pin" style="background:${pinBg};border-color:${pinBorder}"
               onclick="event.stopPropagation();${(currentUser&&canEditProject(proj))?`openEditDeliverable(${proj.id},'${d.id}')`:``}">
               <span style="font-size:10px;flex-shrink:0">${statusIcon}</span>
@@ -1369,6 +1387,16 @@ function renderMonthly() {
 function shiftMonth(d) { monthOffset+=d; renderMonthly(); }
 
 let projFilter = 'all'; // 'all' or 'mine'
+let calFilter  = 'all'; // 'all' or 'mine'
+
+function setCalFilter(f) {
+  calFilter = f;
+  document.getElementById('calFilterAll').style.background  = f==='all'  ? 'var(--text)' : '';
+  document.getElementById('calFilterAll').style.color       = f==='all'  ? '#fff' : 'var(--text2)';
+  document.getElementById('calFilterMine').style.background = f==='mine' ? 'var(--text)' : '';
+  document.getElementById('calFilterMine').style.color      = f==='mine' ? '#fff' : 'var(--text2)';
+  renderMonthly();
+}
 
 function setProjFilter(f) {
   projFilter = f;
