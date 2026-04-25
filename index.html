@@ -484,6 +484,7 @@ select option{background:#fff}
   <div class="header-actions">
     <div class="legend" id="headerLegend">
       <div class="legend-item"><div class="ldot" style="background:#b8dfc9"></div> Available</div>
+      <div class="legend-item"><div class="ldot" style="background:#f9d97a"></div> Busy</div>
       <div class="legend-item"><div class="ldot" style="background:#f5a9a3"></div> Full Capacity</div>
       <div class="legend-item"><div class="ldot" style="background:#f5a9a3"></div> Overloaded</div>
       <div class="legend-item"><span class="spike-badge">⚡ Spike</span> Weekly override</div>
@@ -519,9 +520,9 @@ select option{background:#fff}
 <div class="main">
   <div class="summary-row">
     <div class="card"><div class="card-label">Team Availability</div><div class="card-value val-green" id="s-avail">—</div><div class="card-sub">avg free capacity this week</div></div>
-    <div class="card"><div class="card-label">Available</div><div class="card-value val-green" id="s-green">—</div><div class="card-sub">people below 100% load</div></div>
-    <div class="card"><div class="card-label">Full Capacity</div><div class="card-value val-red" id="s-yellow">—</div><div class="card-sub">people at 100% capacity</div></div>
-    <div class="card"><div class="card-label">Overloaded</div><div class="card-value val-red" id="s-red">—</div><div class="card-sub">people above 100%</div></div>
+    <div class="card"><div class="card-label">Available</div><div class="card-value val-green" id="s-green">—</div><div class="card-sub">people below 60% load</div></div>
+    <div class="card"><div class="card-label">Busy</div><div class="card-value val-yellow" id="s-yellow">—</div><div class="card-sub">people at 60–99% load</div></div>
+    <div class="card"><div class="card-label">Overloaded</div><div class="card-value val-red" id="s-red">—</div><div class="card-sub">people at 100%+</div></div>
   </div>
 
   <div id="view-weekly">
@@ -1067,10 +1068,10 @@ function fmtMonthYear(d) { return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear(
 function fmtMonthYearShort(d) { return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`; }
 function isToday(d) { const t=new Date(); return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear(); }
 function initials(n) { return n.split(' ').map(x=>x[0]).join('').toUpperCase(); }
-function loadColor(l) { return l<100?'var(--green)':'var(--red)'; }
-function loadBg(l)    { return l<100?'#b8dfc9':'#f5a9a3'; }
-function chipClass(l) { return l<100?'chip-green':'chip-red'; }
-function chipLabel(l) { return l<100?'Available':l===100?'Full Capacity':'Overloaded'; }
+function loadColor(l) { return l<60?'var(--green)':l<100?'var(--yellow)':l===100?'var(--red)':'var(--red)'; }
+function loadBg(l)    { return l<60?'#b8dfc9':l<100?'#f9d97a':'#f5a9a3'; }
+function chipClass(l) { return l<60?'chip-green':l<100?'chip-yellow':'chip-red'; }
+function chipLabel(l) { return l<60?'Available':l<100?'Busy':l===100?'Full Capacity':'Overloaded'; }
 function getWeekDays(ws) { return Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);return d;}); }
 function dateInRange(d, start, end) {
   const t=new Date(typeof d==='string'?d+'T12:00:00':d).getTime();
@@ -1176,9 +1177,9 @@ function updateSummary() {
   const loads = team.map(p=>getEffectiveLoad(p.id, wk).load);
   const avg = Math.round(loads.reduce((a,b)=>a+b,0)/loads.length);
   document.getElementById('s-avail').textContent  = (100-avg)+'%';
-  document.getElementById('s-green').textContent  = loads.filter(l=>l<100).length;
-  document.getElementById('s-yellow').textContent = loads.filter(l=>l===100).length;
-  document.getElementById('s-red').textContent    = loads.filter(l=>l>100).length;
+  document.getElementById('s-green').textContent  = loads.filter(l=>l<60).length;
+  document.getElementById('s-yellow').textContent = loads.filter(l=>l>=60&&l<100).length;
+  document.getElementById('s-red').textContent    = loads.filter(l=>l>=100).length;
   document.getElementById('headerDate').textContent = 'Today · '+fmt(new Date());
 }
 
