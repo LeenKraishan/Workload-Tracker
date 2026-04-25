@@ -679,7 +679,12 @@ select option{background:#fff}
     <div style="display:flex;height:calc(100vh - 108px);margin:0 -36px">
       <!-- Sidebar -->
       <div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);padding:14px 10px;overflow-y:auto;background:var(--surface2)">
-        <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:8px">My Sections</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px">My Sections</div>
+          <button onclick="nbToggleEditMode()" id="nbEditModeBtn" title="Edit section titles"
+            style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);padding:2px 5px;border-radius:4px"
+            onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='none'">✎ Edit</button>
+        </div>
         <div id="notesSidebar"></div>
         <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:10px;font-size:11px;padding:5px" onclick="openAddNoteSection()">＋ New Section</button>
       </div>
@@ -687,7 +692,7 @@ select option{background:#fff}
       <div style="flex:1;overflow:auto;background:var(--bg);position:relative">
         <div id="nbSectionHeader" style="display:none;padding:20px 36px 0">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div id="nbSectionTitle" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700"></div>
+            <div id="nbSectionTitle" contenteditable="false" spellcheck="false" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;outline:none;border-radius:6px;padding:2px 6px;margin-left:-6px;cursor:default" onblur="saveSecTitle(this.innerText.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"></div>
             <div style="display:flex;gap:6px">
               <button class="btn btn-sm" onclick="addSticky(currentNoteSection)" style="font-size:11px">📌 Sticky</button>
               <button class="btn btn-sm" onclick="deleteNoteSection(currentNoteSection)" style="font-size:11px;color:var(--muted)">Delete Section</button>
@@ -2697,35 +2702,48 @@ function renderNotesView() {
   const topLevel = sections.filter(s=>!s.parentId);
   const children  = sections.filter(s=>s.parentId);
 
+  // Track collapsed state per section (persists in memory during session)
+  if(!window.nbCollapsed) window.nbCollapsed={};
+
   sb2.innerHTML = topLevel.map(s=>{
     const subs = children.filter(c=>c.parentId===s.id);
     const isActive = currentNoteSection===s.id;
-    const subHtml = subs.map(sub=>{
+    const hasSubs = subs.length>0;
+    const isCollapsed = hasSubs && window.nbCollapsed[s.id];
+
+    const subHtml = (!isCollapsed && hasSubs) ? subs.map(sub=>{
       const subActive = currentNoteSection===sub.id;
       return `<div class="nb-sec-item nb-sec-sub" data-id="${sub.id}"
         onclick="selectNoteSection('${sub.id}')"
         draggable="true"
-        style="padding:5px 9px 5px 24px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:500;
+        style="padding:5px 9px 5px 26px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:500;
         margin-bottom:2px;display:flex;align-items:center;gap:6px;
         background:${subActive?'var(--green-bg)':''};
         color:${subActive?'var(--green)':'var(--text2)'};transition:background 0.1s">
-        <span style="color:var(--muted);cursor:grab;font-size:11px">⠿</span>
-        <span>↳ ${sub.title}</span>
+        <span style="color:var(--muted);cursor:grab;font-size:10px;flex-shrink:0">⠿</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↳ ${sub.title}</span>
       </div>`;
-    }).join('');
+    }).join('') : '';
 
-    return `<div class="nb-sec-item" data-id="${s.id}"
-      draggable="true"
-      style="margin-bottom:4px">
+    // Arrow: ▾ when expanded, ▸ when collapsed, nothing if no subs
+    const arrow = hasSubs
+      ? `<span onclick="event.stopPropagation();nbToggleCollapse('${s.id}')"
+           style="font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;padding:2px;
+           transform:${isCollapsed?'rotate(-90deg)':'rotate(0deg)'};display:inline-block;transition:transform 0.2s"
+           title="${isCollapsed?'Expand':'Collapse'}">▾</span>`
+      : '<span style="width:14px;flex-shrink:0"></span>';
+
+    return `<div class="nb-sec-item" data-id="${s.id}" draggable="true" style="margin-bottom:4px">
       <div onclick="selectNoteSection('${s.id}')"
-        style="padding:7px 9px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;
-        display:flex;align-items:center;gap:6px;
+        style="padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;
+        display:flex;align-items:center;gap:5px;
         background:${isActive?'var(--green-bg)':''};
         color:${isActive?'var(--green)':'var(--text)'};transition:background 0.1s"
         onmouseenter="if('${s.id}'!==currentNoteSection)this.style.background='var(--surface)'"
         onmouseleave="if('${s.id}'!==currentNoteSection)this.style.background=''">
-        <span style="color:var(--muted);cursor:grab;font-size:13px">⠿</span>
-        <span>📁 ${s.title}</span>
+        <span style="color:var(--muted);cursor:grab;font-size:12px;flex-shrink:0">⠿</span>
+        <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 ${s.title}</span>
+        ${arrow}
       </div>
       ${subHtml}
     </div>`;
@@ -2775,6 +2793,37 @@ function renderNotesView() {
     if(canvas) canvas.innerHTML='';
     document.getElementById('nbEmpty').style.display='block';
   }
+}
+
+let nbEditMode = false;
+
+function nbToggleEditMode() {
+  nbEditMode = !nbEditMode;
+  const btn = document.getElementById('nbEditModeBtn');
+  const title = document.getElementById('nbSectionTitle');
+  if(btn) { btn.textContent = nbEditMode ? '✓ Done' : '✎ Edit'; btn.style.color = nbEditMode ? 'var(--green)' : 'var(--muted)'; }
+  if(title) {
+    title.contentEditable = nbEditMode ? 'true' : 'false';
+    title.style.cursor = nbEditMode ? 'text' : 'default';
+    title.style.borderBottom = nbEditMode ? '2px solid var(--green)' : 'none';
+    if(nbEditMode) { title.focus(); placeCursorEnd(title); }
+  }
+}
+
+function nbToggleCollapse(sectionId) {
+  if(!window.nbCollapsed) window.nbCollapsed = {};
+  window.nbCollapsed[sectionId] = !window.nbCollapsed[sectionId];
+  renderNotesView();
+}
+
+function saveSecTitle(newTitle) {
+  if(!newTitle || !currentNoteSection) return;
+  const sections = loadNotes();
+  const s = sections.find(x=>x.id===currentNoteSection);
+  if(!s || s.title===newTitle) return;
+  s.title = newTitle;
+  saveNotes(sections);
+  renderNotesView();
 }
 
 function selectNoteSection(sectionId) {
