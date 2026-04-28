@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.bunny.net/css?family=fraunces:400,400i,600,700|dm-sans:300,400,500,600&display=swap');
 
 :root {
   --bg: #f4f1ec;
@@ -3785,10 +3785,19 @@ function buildTsSheet(ts, personName) {
   const rows=ts.rows||{};
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  const header=['Date','Day',...cols.map(c=>c.name),'Daily Total'];
-  const aoa=[
-    [`Timesheet — ${personName}`],
-    [`Month: ${fmtMonthYear(new Date(yr,mo-1,1))}`],
+  // Row 1: Name label + value
+  // Row 2: Date label + value  
+  // Row 3: blank
+  // Row 4: column headers
+  // Rows 5+: daily data
+  // Last row: monthly totals
+
+  const monthLabel = fmtMonthYear(new Date(yr,mo-1,1));
+  const header = ['Date','Day',...cols.map(c=>c.name),'Daily Total'];
+
+  const aoa = [
+    ['Name:', personName],
+    ['Date:', monthLabel],
     [],
     header
   ];
@@ -3800,10 +3809,10 @@ function buildTsSheet(ts, personName) {
     const rowData=rows[dateStr]||{};
     const colVals=cols.map(c=>parseFloat(rowData[c.id])||0);
     const total=colVals.reduce((a,b)=>a+b,0);
-    aoa.push([dateStr,dayNames[dow],...colVals,total]);
+    aoa.push([dateStr, dayNames[dow], ...colVals, total]);
   }
 
-  // Totals row
+  // Monthly totals row
   const colTotals=cols.map(c=>{
     let t=0;
     for(let d=1;d<=daysInMonth;d++){
@@ -3815,14 +3824,87 @@ function buildTsSheet(ts, personName) {
   aoa.push(['','Monthly Total',...colTotals,colTotals.reduce((a,b)=>a+b,0)]);
 
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  const colWidths=[];
-  aoa.forEach(row=>row.forEach((cell,i)=>{
-    const len=String(cell||'').length;
-    colWidths[i]=Math.max(colWidths[i]||8, Math.min(len+2,30));
-  }));
-  ws['!cols']=colWidths.map(w=>({wch:w}));
-  // Freeze first 4 rows (header area)
+  const totalRows=aoa.length;
+  const totalCols=header.length;
+
+  // ── Styles ──────────────────────────────────────────────────────
+  const HEADER_FILL  = 'DCE6F2'; // theme accent1 + tint 0.8 (light blue)
+  const TOTAL_FILL   = 'D9D9D9'; // light gray
+  const BORDER_THIN  = {style:'thin', color:{rgb:'000000'}};
+  const FULL_BORDER  = {top:BORDER_THIN, bottom:BORDER_THIN, left:BORDER_THIN, right:BORDER_THIN};
+
+  function cellRef(r,c){ return XLSX.utils.encode_cell({r,c}); }
+  function applyBorder(addr){
+    if(!ws[addr]) ws[addr]={t:'n',v:0};
+    ws[addr].s = Object.assign(ws[addr].s||{}, {border: FULL_BORDER});
+  }
+  function applyFill(addr, rgb){
+    if(!ws[addr]) return;
+    ws[addr].s = Object.assign(ws[addr].s||{}, {fill:{patternType:'solid',fgColor:{rgb}}});
+  }
+  function applyFont(addr, opts){
+    if(!ws[addr]) return;
+    ws[addr].s = Object.assign(ws[addr].s||{}, {font: opts});
+  }
+  function applyAlign(addr, horiz){
+    if(!ws[addr]) return;
+    ws[addr].s = Object.assign(ws[addr].s||{}, {alignment:{horizontal:horiz,vertical:'center'}});
+  }
+
+  // Row 1 (idx 0): Name label bold
+  applyFont(cellRef(0,0), {bold:true, name:'Calibri', sz:11});
+  // Row 2 (idx 1): Date label bold
+  applyFont(cellRef(1,0), {bold:true, name:'Calibri', sz:11});
+
+  // Row 4 (idx 3): header row — fill + bold + borders + center
+  for(let c=0;c<totalCols;c++){
+    const addr=cellRef(3,c);
+    if(!ws[addr]) ws[addr]={t:'s',v:''};
+    ws[addr].s = {
+      font: {bold:true, name:'Calibri', sz:11},
+      fill: {patternType:'solid', fgColor:{rgb:HEADER_FILL}},
+      border: FULL_BORDER,
+      alignment: {horizontal: c>=2?'center':'left', vertical:'center', wrapText:true}
+    };
+  }
+
+  // Data rows (idx 4 to 4+daysInMonth-1): thin borders, center numeric cols
+  for(let r=4;r<4+daysInMonth;r++){
+    for(let c=0;c<totalCols;c++){
+      const addr=cellRef(r,c);
+      if(!ws[addr]) ws[addr]={t:'n',v:0};
+      ws[addr].s = {
+        font: {name:'Calibri', sz:11},
+        border: FULL_BORDER,
+        alignment: {horizontal: c>=2?'center':'left', vertical:'center'}
+      };
+    }
+  }
+
+  // Monthly Total row (last row): gray fill + bold + borders
+  const totIdx = 4+daysInMonth;
+  for(let c=0;c<totalCols;c++){
+    const addr=cellRef(totIdx,c);
+    if(!ws[addr]) ws[addr]={t: c<2?'s':'n', v: c<2?'':0};
+    ws[addr].s = {
+      font: {bold:true, name:'Calibri', sz:11},
+      fill: {patternType:'solid', fgColor:{rgb:TOTAL_FILL}},
+      border: FULL_BORDER,
+      alignment: {horizontal: c>=2?'center':'left', vertical:'center'}
+    };
+  }
+
+  // Column widths — match reference file
+  ws['!cols'] = [
+    {wch:15},   // Date
+    {wch:8},    // Day
+    ...cols.map(c=>({wch:Math.max(c.name.length+2, 12)})),
+    {wch:12}    // Daily Total
+  ];
+
+  // Freeze top 4 rows
   ws['!freeze']={xSplit:0,ySplit:4};
+
   return ws;
 }
 
@@ -3830,14 +3912,19 @@ function buildTsSummarySheet(sheets, teamArr, month) {
   const [yr,mo]=month.split('-').map(Number);
   const monthLabel=fmtMonthYear(new Date(yr,mo-1,1));
 
-  // Collect all project names
+  // Collect all unique project column names
   const allCols=new Set();
   sheets.forEach(s=>(s.columns||[]).forEach(c=>allCols.add(c.name)));
   const colNames=[...allCols];
 
+  // Row 1: title (matches "Timesheet Summary — April 2026")
+  // Row 2: blank
+  // Row 3: header row
+  // Rows 4+: one per team member
+
   const header=['Name','Title',...colNames,'Total Hours','Status'];
   const aoa=[
-    [`Timesheet Summary — ${monthLabel}`],
+    [`Timesheet Summary \u2014 ${monthLabel}`],
     [],
     header
   ];
@@ -3852,17 +3939,59 @@ function buildTsSummarySheet(sheets, teamArr, month) {
     });
     const total=colTotals.reduce((a,b)=>a+b,0);
     const status=s&&s.submitted?'Submitted':s?'Draft':'Not started';
-    aoa.push([p.name,p.title||'',...colTotals,total,status]);
+    aoa.push([p.name, p.title||'', ...colTotals, total, status]);
   });
 
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  // Auto column widths
-  const colWidths=[];
-  aoa.forEach(row=>row.forEach((cell,i)=>{
-    const len=String(cell||'').length;
-    colWidths[i]=Math.max(colWidths[i]||8, Math.min(len+2,40));
-  }));
-  ws['!cols']=colWidths.map(w=>({wch:w}));
+  const totalRows=aoa.length;
+  const totalCols=header.length;
+
+  const HEADER_FILL = 'DCE6F2';
+  const BORDER_THIN = {style:'thin', color:{rgb:'000000'}};
+  const FULL_BORDER = {top:BORDER_THIN, bottom:BORDER_THIN, left:BORDER_THIN, right:BORDER_THIN};
+  function cellRef(r,c){ return XLSX.utils.encode_cell({r,c}); }
+
+  // Row 1 (idx 0): Title — bold, merged A1:B1 in reference
+  const titleCell = ws['A1'];
+  if(titleCell){
+    titleCell.s = {font:{bold:true, name:'Calibri', sz:12}, alignment:{horizontal:'center',vertical:'center'}};
+  }
+  ws['!merges'] = [{s:{r:0,c:0}, e:{r:0,c:totalCols-1}}];
+
+  // Row 3 (idx 2): header row — fill + bold + borders + center
+  for(let c=0;c<totalCols;c++){
+    const addr=cellRef(2,c);
+    if(!ws[addr]) ws[addr]={t:'s',v:''};
+    ws[addr].s = {
+      font: {bold:true, name:'Calibri', sz:11},
+      fill: {patternType:'solid', fgColor:{rgb:HEADER_FILL}},
+      border: FULL_BORDER,
+      alignment: {horizontal: c>=2?'center':'left', vertical:'center', wrapText:true}
+    };
+  }
+
+  // Data rows (idx 3+): borders + center numeric cols
+  for(let r=3;r<totalRows;r++){
+    for(let c=0;c<totalCols;c++){
+      const addr=cellRef(r,c);
+      if(!ws[addr]) ws[addr]={t:'s',v:''};
+      ws[addr].s = {
+        font: {name:'Calibri', sz:11},
+        border: FULL_BORDER,
+        alignment: {horizontal: c>=2?'center':'left', vertical:'center'}
+      };
+    }
+  }
+
+  // Column widths — match reference file
+  ws['!cols'] = [
+    {wch:30},   // Name
+    {wch:20},   // Title
+    ...colNames.map(n=>({wch:Math.max(n.length+2, 14)})),
+    {wch:14},   // Total Hours
+    {wch:14}    // Status
+  ];
+
   return ws;
 }
 
