@@ -380,8 +380,20 @@ select option{background:#fff}
 .nb-todo-list li::before{content:'☐';position:absolute;left:0;top:0;font-size:14px;color:#888;line-height:1.8;width:22px;text-align:center;cursor:pointer;user-select:none}
 .nb-todo-list li.nb-done{text-decoration:line-through;color:var(--muted)}
 .nb-todo-list li.nb-done::before{content:'☑';color:#2d8f5e}
-.nb-note-content table{border-collapse:collapse;width:100%;table-layout:fixed;margin:8px 0}
-.nb-note-content td,.nb-note-content th{border:1px solid var(--border);padding:8px 10px;vertical-align:top;min-width:60px}
+/* Table toolbar */
+.nb-tbl-toolbar{position:fixed;z-index:9000;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.13);display:none;flex-wrap:wrap;
+  gap:2px;padding:5px 7px;align-items:center;max-width:420px}
+.nb-tbl-toolbar button{background:none;border:1px solid var(--border);border-radius:5px;
+  padding:3px 8px;cursor:pointer;font-size:11px;color:var(--text);white-space:nowrap}
+.nb-tbl-toolbar button:hover{background:var(--surface2)}
+.nb-tbl-toolbar .tbl-sep{width:1px;height:16px;background:var(--border);margin:0 2px;flex-shrink:0}
+.nb-tbl-toolbar .tbl-del{color:var(--red);border-color:var(--red)}
+.nb-tbl-toolbar .tbl-del:hover{background:#fdecea}
+/* Resizable table cells */
+.nb-note-content table{border-collapse:collapse;width:100%;table-layout:fixed;margin:8px 0;position:relative}
+.nb-note-content td,.nb-note-content th{border:1px solid var(--border);padding:8px 10px;
+  vertical-align:top;min-width:40px;position:relative;overflow:hidden}
 .nb-note-content th{background:var(--surface2);font-weight:600}
 .nb-note:hover .nb-note-bar{opacity:1!important}
 .nb-note:focus-within .nb-note-bar{opacity:1!important}
@@ -700,6 +712,91 @@ select option{background:#fff}
               <button class="btn btn-sm" onclick="deleteNoteSection(currentNoteSection)" style="font-size:11px;color:var(--muted)">Delete Section</button>
             </div>
           </div>
+// ── Table toolbar ──────────────────────────────────────────────
+let nbActiveTd=null, nbActiveTable=null;
+
+function nbInitTableEvents(noteEl) {
+  noteEl.addEventListener('mousedown', function(e) {
+    const td=e.target.closest('td,th');
+    const toolbar=document.getElementById('nbTblToolbar');
+    if(td && noteEl.contains(td)) {
+      nbActiveTd=td; nbActiveTable=td.closest('table');
+      requestAnimationFrame(()=>nbShowTblToolbar(td));
+    } else if(toolbar && !toolbar.contains(e.target)) {
+      toolbar.style.display='none'; nbActiveTd=null; nbActiveTable=null;
+    }
+  });
+}
+
+function nbShowTblToolbar(td) {
+  const toolbar=document.getElementById('nbTblToolbar');
+  if(!toolbar||!td) return;
+  const rect=td.getBoundingClientRect();
+  toolbar.style.display='flex';
+  const tbH=toolbar.offsetHeight||44;
+  let top=rect.top-tbH-8; if(top<4) top=rect.bottom+6;
+  let left=Math.max(4,Math.min(window.innerWidth-(toolbar.offsetWidth||350)-8,rect.left));
+  toolbar.style.top=top+'px'; toolbar.style.left=left+'px';
+  const inp=document.getElementById('nbTblColW'); if(inp) inp.value=td.offsetWidth||120;
+}
+
+function nbTblAddRowAbove() {
+  if(!nbActiveTable||!nbActiveTd) return;
+  const ri=nbActiveTd.closest('tr').rowIndex, cc=nbActiveTable.rows[0].cells.length;
+  const nr=nbActiveTable.insertRow(ri);
+  for(let i=0;i<cc;i++){const c=nr.insertCell(i);c.contentEditable='true';c.style.cssText='border:1px solid var(--border);padding:8px 10px;vertical-align:top;min-width:40px';}
+  nbTblSave();
+}
+function nbTblAddRowBelow() {
+  if(!nbActiveTable||!nbActiveTd) return;
+  const ri=nbActiveTd.closest('tr').rowIndex+1, cc=nbActiveTable.rows[0].cells.length;
+  const nr=nbActiveTable.insertRow(ri);
+  for(let i=0;i<cc;i++){const c=nr.insertCell(i);c.contentEditable='true';c.style.cssText='border:1px solid var(--border);padding:8px 10px;vertical-align:top;min-width:40px';}
+  nbTblSave();
+}
+function nbTblAddColLeft() {
+  if(!nbActiveTable||!nbActiveTd) return;
+  const ci=nbActiveTd.cellIndex;
+  for(let r=0;r<nbActiveTable.rows.length;r++){const c=nbActiveTable.rows[r].insertCell(ci);c.contentEditable='true';c.style.cssText='border:1px solid var(--border);padding:8px 10px;vertical-align:top;min-width:40px';}
+  nbTblSave();
+}
+function nbTblAddColRight() {
+  if(!nbActiveTable||!nbActiveTd) return;
+  const ci=nbActiveTd.cellIndex+1;
+  for(let r=0;r<nbActiveTable.rows.length;r++){const c=nbActiveTable.rows[r].insertCell(ci);c.contentEditable='true';c.style.cssText='border:1px solid var(--border);padding:8px 10px;vertical-align:top;min-width:40px';}
+  nbTblSave();
+}
+function nbTblDelRow() {
+  if(!nbActiveTable||!nbActiveTd) return;
+  if(nbActiveTable.rows.length<=1){nbTblDelTable();return;}
+  nbActiveTable.deleteRow(nbActiveTd.closest('tr').rowIndex);
+  nbActiveTd=null; document.getElementById('nbTblToolbar').style.display='none'; nbTblSave();
+}
+function nbTblDelCol() {
+  if(!nbActiveTable||!nbActiveTd) return;
+  const ci=nbActiveTd.cellIndex;
+  if(nbActiveTable.rows[0].cells.length<=1){nbTblDelTable();return;}
+  for(let r=0;r<nbActiveTable.rows.length;r++) nbActiveTable.rows[r].deleteCell(ci);
+  nbActiveTd=null; document.getElementById('nbTblToolbar').style.display='none'; nbTblSave();
+}
+function nbTblDelTable() {
+  if(!nbActiveTable) return;
+  nbActiveTable.remove(); nbActiveTd=null; nbActiveTable=null;
+  document.getElementById('nbTblToolbar').style.display='none'; nbTblSave();
+}
+function nbTblSetColWidth(w) {
+  if(!nbActiveTable||!nbActiveTd) return;
+  const ci=nbActiveTd.cellIndex, px=Math.max(40,parseInt(w)||120)+'px';
+  for(let r=0;r<nbActiveTable.rows.length;r++){const c=nbActiveTable.rows[r].cells[ci];if(c){c.style.width=px;c.style.minWidth=px;}}
+  nbTblSave();
+}
+function nbTblSave() { clearTimeout(nbSaveTimer); nbSaveTimer=setTimeout(()=>saveAllNotes(currentNoteSection),400); }
+document.addEventListener('mousedown',function(e){
+  const t=document.getElementById('nbTblToolbar');
+  if(t&&t.style.display!=='none'&&!t.contains(e.target)&&!e.target.closest('td,th')){t.style.display='none';nbActiveTd=null;nbActiveTable=null;}
+});
+document.addEventListener('scroll',()=>{const t=document.getElementById('nbTblToolbar');if(t)t.style.display='none';},true);
+
           <div id="nbStickies" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
           <hr style="border:none;border-top:1px solid var(--border);margin-bottom:0">
         </div>
@@ -1023,6 +1120,24 @@ select option{background:#fff}
       <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
     </div>
   </div>
+</div>
+
+<!-- TABLE TOOLBAR -->
+<div class="nb-tbl-toolbar" id="nbTblToolbar">
+  <button onclick="nbTblAddRowAbove()">↑ Row above</button>
+  <button onclick="nbTblAddRowBelow()">↓ Row below</button>
+  <div class="tbl-sep"></div>
+  <button onclick="nbTblAddColLeft()">← Col left</button>
+  <button onclick="nbTblAddColRight()">→ Col right</button>
+  <div class="tbl-sep"></div>
+  <button onclick="nbTblDelRow()" class="tbl-del">✕ Row</button>
+  <button onclick="nbTblDelCol()" class="tbl-del">✕ Col</button>
+  <button onclick="nbTblDelTable()" class="tbl-del">✕ Table</button>
+  <div class="tbl-sep"></div>
+  <label style="font-size:11px;color:var(--muted)">W:</label>
+  <input type="number" id="nbTblColW" min="40" max="500" step="10" value="120"
+    style="width:55px;padding:2px 5px;font-size:11px;border:1px solid var(--border);border-radius:4px"
+    onchange="nbTblSetColWidth(this.value)" title="Column width px">
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2931,7 +3046,7 @@ function createNoteEl(n, sectionId) {
     <div class="nb-note-content" contenteditable="true" data-placeholder="Start typing…"
       style="flex:1;padding:14px 16px;outline:none;font-size:14px;line-height:1.8;
       word-break:break-word;overflow-wrap:break-word;overflow-y:auto;min-height:80px;user-select:text;-webkit-user-select:text"
-      onfocus="lastFocusedNote=this">${n.content||''}</div>`;
+      onfocus="lastFocusedNote=this;nbSyncFontSel()" onkeyup="nbSyncFontSel()" onmouseup="nbSyncFontSel()">${n.content||''}</div>`;
 
   // Make draggable by title bar
   const bar=el.querySelector('.nb-note-bar');
@@ -2940,7 +3055,10 @@ function createNoteEl(n, sectionId) {
     e.preventDefault();
     const startX=e.clientX, startY=e.clientY;
     const startL=parseInt(el.style.left)||0, startT=parseInt(el.style.top)||0;
-    el.style.zIndex=100; el.style.boxShadow='0 8px 30px rgba(0,0,0,0.15)';
+    // Bring to front among all notes
+    let maxZ=100;
+    document.querySelectorAll('.nb-note').forEach(n=>{const z=parseInt(n.style.zIndex)||1;if(z>maxZ)maxZ=z;});
+    el.style.zIndex=maxZ+1; el.style.boxShadow='0 8px 30px rgba(0,0,0,0.15)';
     function onMove(e) {
       const canvas=document.getElementById('nbCanvas');
       const maxLeft=canvas?canvas.offsetWidth-el.offsetWidth-4:9999;
@@ -2979,6 +3097,9 @@ function createNoteEl(n, sectionId) {
     nbSaveTimer=setTimeout(()=>saveAllNotes(sectionId),800);
   });
 
+  // Table toolbar events
+  nbInitTableEvents(content);
+
   // Track width resize — clamp to canvas edge
   const ro=new ResizeObserver(()=>{
     const canvas=document.getElementById('nbCanvas');
@@ -2993,7 +3114,10 @@ function createNoteEl(n, sectionId) {
   ro.observe(el);
 
   // Focus highlight
-  el.addEventListener('focusin',()=>{el.style.borderColor='var(--green)';el.style.boxShadow='0 0 0 2px rgba(45,143,94,0.12),var(--shadow)';});
+  el.addEventListener('focusin',()=>{
+    let maxZ=1;
+    document.querySelectorAll('.nb-note').forEach(n=>{const z=parseInt(n.style.zIndex)||1;if(z>maxZ)maxZ=z;});
+    el.style.zIndex=maxZ+1;el.style.borderColor='var(--green)';el.style.boxShadow='0 0 0 2px rgba(45,143,94,0.12),var(--shadow)';});
   el.addEventListener('focusout',()=>{el.style.borderColor='var(--border)';el.style.boxShadow='var(--shadow)';});
 
   return el;
@@ -3110,6 +3234,25 @@ document.addEventListener('keydown',function(e){
 });
 
 // ── Toolbar actions ────────────────────────────
+function nbSyncFontSel() {
+  // Read the font size at the current cursor/selection and update the dropdown
+  try {
+    const sel=window.getSelection();
+    if(!sel||!sel.rangeCount) return;
+    let node=sel.focusNode;
+    if(node&&node.nodeType===3) node=node.parentElement;
+    if(!node) return;
+    const computed=window.getComputedStyle(node).fontSize;
+    const px=Math.round(parseFloat(computed));
+    const sel2=document.getElementById('nbFontSizeSel');
+    if(!sel2) return;
+    // Find closest option
+    const opts=[...sel2.options].map(o=>parseInt(o.value)).filter(Boolean);
+    const closest=opts.reduce((a,b)=>Math.abs(b-px)<Math.abs(a-px)?b:a,opts[0]);
+    sel2.value=String(closest);
+  } catch(e){}
+}
+
 function nbFontSize(size) {
   if(!size) return;
   if(lastFocusedNote) lastFocusedNote.focus();
@@ -3138,7 +3281,15 @@ function nbFontSize(size) {
 function nbInsertBullet() {
   const note = nbGetNote(); if(!note) return;
   note.focus();
-  document.execCommand('insertUnorderedList');
+  // Ensure selection is within this note only
+  const sel=window.getSelection();
+  if(sel&&sel.rangeCount>0) {
+    const range=sel.getRangeAt(0);
+    // If no text selected, just insert at cursor
+    document.execCommand('insertUnorderedList');
+  } else {
+    document.execCommand('insertUnorderedList');
+  }
   clearTimeout(nbSaveTimer);
   nbSaveTimer=setTimeout(()=>saveAllNotes(currentNoteSection),400);
 }
@@ -3161,7 +3312,8 @@ function nbInsertTodo() {
   // Snapshot all existing ULs before the command
   const before = new Set([...note.querySelectorAll('ul')].map(u=>u));
 
-  // Same command as bullets — handles selected text, empty cursor, everything
+  // If text is selected, insertUnorderedList wraps only that selection
+  // If nothing selected, it creates a new list at cursor
   document.execCommand('insertUnorderedList');
 
   // Find the UL that was just created or activated (not in before set)
@@ -3758,7 +3910,16 @@ function buildTsSheet(ts, personName) {
   });
   aoa.push(['','Monthly Total',...colTotals,colTotals.reduce((a,b)=>a+b,0)]);
 
-  return XLSX.utils.aoa_to_sheet(aoa);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  const colWidths=[];
+  aoa.forEach(row=>row.forEach((cell,i)=>{
+    const len=String(cell||'').length;
+    colWidths[i]=Math.max(colWidths[i]||8, Math.min(len+2,30));
+  }));
+  ws['!cols']=colWidths.map(w=>({wch:w}));
+  // Freeze first 4 rows (header area)
+  ws['!freeze']={xSplit:0,ySplit:4};
+  return ws;
 }
 
 function buildTsSummarySheet(sheets, teamArr, month) {
@@ -3778,7 +3939,7 @@ function buildTsSummarySheet(sheets, teamArr, month) {
   ];
 
   teamArr.forEach(p=>{
-    const s=sheets.find(x=>x.person_id===p.id);
+    const s=sheets.find(x=>String(x.person_id)===String(p.id));
     const colTotals=colNames.map(cn=>{
       if(!s) return 0;
       const col=(s.columns||[]).find(c=>c.name===cn);
@@ -3790,7 +3951,15 @@ function buildTsSummarySheet(sheets, teamArr, month) {
     aoa.push([p.name,p.title||'',...colTotals,total,status]);
   });
 
-  return XLSX.utils.aoa_to_sheet(aoa);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  // Auto column widths
+  const colWidths=[];
+  aoa.forEach(row=>row.forEach((cell,i)=>{
+    const len=String(cell||'').length;
+    colWidths[i]=Math.max(colWidths[i]||8, Math.min(len+2,40));
+  }));
+  ws['!cols']=colWidths.map(w=>({wch:w}));
+  return ws;
 }
 
 function showToast(msg) {
