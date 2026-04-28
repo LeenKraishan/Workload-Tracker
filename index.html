@@ -380,7 +380,6 @@ select option{background:#fff}
 .nb-todo-list li::before{content:'☐';position:absolute;left:0;top:0;font-size:14px;color:#888;line-height:1.8;width:22px;text-align:center;cursor:pointer;user-select:none}
 .nb-todo-list li.nb-done{text-decoration:line-through;color:var(--muted)}
 .nb-todo-list li.nb-done::before{content:'☑';color:#2d8f5e}
-
 .nb-note-content th{background:var(--surface2);font-weight:600}
 .nb-note:hover .nb-note-bar{opacity:1!important}
 .nb-note:focus-within .nb-note-bar{opacity:1!important}
@@ -512,8 +511,9 @@ select option{background:#fff}
   <div class="tab active" onclick="switchTab('weekly',this)" data-view="weekly">Weekly Grid</div>
   <div class="tab" onclick="switchTab('monthly',this)" data-view="monthly">Monthly Calendar</div>
   <div class="tab" onclick="switchTab('projects',this)" data-view="projects">Projects</div>
-  <div class="tab" onclick="switchTab('mywork',this)" id="myworkTab" data-view="mywork">My Work <span id="inboxBadge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:3px"></span></div>
   <div class="tab" onclick="switchTab('finder',this)" data-view="finder">🔍 Capacity Finder</div>
+  <div style="width:1px;background:var(--border);margin:8px 4px;flex-shrink:0"></div>
+  <div class="tab" onclick="switchTab('mywork',this)" id="myworkTab" data-view="mywork">My Work <span id="inboxBadge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:3px"></span></div>
   <div class="tab" onclick="switchTab('notes',this)" data-view="notes">📝 My Notes</div>
   <div class="tab" onclick="switchTab('timesheet',this)" data-view="timesheet">🕐 Timesheet</div>
 </div>
@@ -637,7 +637,7 @@ select option{background:#fff}
     </div>
   </div>
 
-  <div id="view-notes" class="hidden">
+  <div id="view-notes" class="hidden" style="overflow:hidden">
     <!-- Compact toolbar -->
     <div style="padding:6px 36px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:3px;flex-wrap:wrap;position:sticky;top:0;z-index:10;margin:-26px -36px 0 -36px">
       <button title="Undo (Ctrl+Z)" onclick="nbUndo()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">↩</button>
@@ -667,9 +667,1276 @@ select option{background:#fff}
         <option value="28">28</option>
         <option value="32">32</option>
       </select>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn btn-accent" onclick="nbAddNote()" style="font-size:12px;padding:4px 12px">＋ Add Note</button>
+    </div>
+    <div style="display:flex;height:calc(100vh - 108px);margin:0 -36px">
+      <!-- Sidebar -->
+      <div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);padding:14px 10px;overflow-y:auto;background:var(--surface2)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px">My Sections</div>
+          <button onclick="nbToggleEditMode()" id="nbEditModeBtn" title="Edit section titles"
+            style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);padding:2px 5px;border-radius:4px"
+            onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='none'">✎ Edit</button>
+        </div>
+        <div id="notesSidebar"></div>
+        <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:10px;font-size:11px;padding:5px" onclick="openAddNoteSection()">＋ New Section</button>
+      </div>
+      <!-- Free-form canvas area -->
+      <div style="flex:1;overflow:auto;background:var(--bg);position:relative">
+        <div id="nbSectionHeader" style="display:none;padding:20px 36px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div id="nbSectionTitle" contenteditable="false" spellcheck="false" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;outline:none;border-radius:6px;padding:2px 6px;margin-left:-6px;cursor:default" onblur="saveSecTitle(this.innerText.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm" onclick="addSticky(currentNoteSection)" style="font-size:11px">📌 Sticky</button>
+              <button class="btn btn-sm" onclick="deleteNoteSection(currentNoteSection)" style="font-size:11px;color:var(--muted)">Delete Section</button>
+            </div>
+          </div>
+          <div id="nbStickies" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
+          <hr style="border:none;border-top:1px solid var(--border);margin-bottom:0">
+        </div>
+        <!-- Canvas: notes are absolutely positioned here -->
+        <div id="nbCanvas" style="position:relative;min-height:700px;padding:20px 36px;overflow:visible"></div>
+        <div id="nbEmpty" style="text-align:center;padding:100px 40px;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:12px">📝</div>
+          <div style="font-family:'Fraunces',serif;font-size:17px;margin-bottom:6px">Select a section</div>
+          <div style="font-size:13px">Or create a new one</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-      
-      <div style="flex:1roj=>{ proj.members = proj.members.filter(m=>m.personId!==id); saveProject(proj); });
+  <div id="view-timesheet" class="hidden">
+    <!-- Regular user timesheet -->
+    <div id="tsUserView">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🕐 My Timesheet</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Log your daily hours per project</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="tsMonthSel" onchange="loadUserTimesheet()" style="padding:7px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"></select>
+          <div id="tsStatusBadge"></div>
+          <button class="btn btn-accent" id="tsExportBtn" onclick="exportMyTimesheet()" style="font-size:12px">📥 Export</button>
+          <button class="btn btn-primary" id="tsSubmitBtn" onclick="confirmSubmitTimesheet()">Submit & Lock</button>
+        </div>
+      </div>
+      <!-- Add column row -->
+      <div id="tsAddColRow" style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <select id="tsColSel" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);flex:1;max-width:280px">
+          <option value="">＋ Select project to add…</option>
+        </select>
+        <input type="text" id="tsOtherName" placeholder="Custom label" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);width:160px;display:none">
+        <button class="btn btn-accent" onclick="tsAddColumn()" style="font-size:12px;flex-shrink:0">＋ Add Column</button>
+      </div>
+      <div style="overflow-x:auto">
+        <div id="tsMatrix"></div>
+      </div>
+    </div>
+    <!-- HR view -->
+    <div id="tsHRView" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🕐 Team Timesheets</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">View and export all team members' timesheets</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select id="hrMonthSel" onchange="loadHRTimesheets()" style="padding:7px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"></select>
+          <button class="btn btn-accent" onclick="exportAllTimesheets(false)" style="font-size:12px">📥 Export All (One File)</button>
+          <button class="btn btn-accent" onclick="exportAllTimesheets(true)" style="font-size:12px">📥 Export Individual</button>
+        </div>
+      </div>
+      <div id="tsHRList"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ADD NOTE CARD MODAL -->
+<div class="overlay" id="addNoteCardModal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('addNoteCardModal')">×</button>
+    <h2>Add Card</h2>
+    <div class="field"><label>Card Title</label><input type="text" id="noteCardTitle" placeholder="e.g. Main To Do List, Flora/Fauna..."></div>
+    <div class="field"><label>Type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+        <div onclick="selectCardType('todo',this)" class="note-type-opt selected" style="padding:10px;border:2px solid var(--green);border-radius:8px;cursor:pointer;text-align:center;background:var(--green-bg)">
+          <div style="font-size:18px;margin-bottom:4px">✅</div>
+          <div style="font-size:11px;font-weight:600;color:var(--green)">To-Do List</div>
+        </div>
+        <div onclick="selectCardType('freetext',this)" class="note-type-opt" style="padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center">
+          <div style="font-size:18px;margin-bottom:4px">📝</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">Free Notes</div>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="noteCardType" value="todo">
+    <div class="field"><label>Size</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px">
+        <div onclick="selectCardSize('small',this)" class="card-size-opt selected" style="padding:8px;border:2px solid var(--green);border-radius:8px;cursor:pointer;text-align:center;background:var(--green-bg)">
+          <div style="font-size:11px;font-weight:600;color:var(--green)">Small</div>
+          <div style="font-size:10px;color:var(--muted)">1 column</div>
+        </div>
+        <div onclick="selectCardSize('medium',this)" class="card-size-opt" style="padding:8px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">Medium</div>
+          <div style="font-size:10px;color:var(--muted)">2 columns</div>
+        </div>
+        <div onclick="selectCardSize('large',this)" class="card-size-opt" style="padding:8px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">Large</div>
+          <div style="font-size:10px;color:var(--muted)">Full width</div>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="noteCardSize" value="small">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addNoteCardModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNoteCard()">Add Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM SUBMIT TIMESHEET MODAL -->
+<div class="overlay" id="confirmTsModal">
+  <div class="modal" style="width:400px">
+    <button class="modal-close" onclick="closeModal('confirmTsModal')">×</button>
+    <h2>Submit Timesheet?</h2>
+    <p class="modal-sub">Once submitted, your timesheet will be locked and sent to HR. You will not be able to edit it unless HR unlocks it.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('confirmTsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitUserTimesheet()">Yes, Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD NOTE SECTION MODAL -->
+<div class="overlay" id="addNoteSectionModal">
+  <div class="modal" style="width:400px">
+    <button class="modal-close" onclick="closeModal('addNoteSectionModal')">×</button>
+    <h2>New Section</h2>
+    <p class="modal-sub">Create a section or subsection to organise your notes</p>
+    <div class="field"><label>Title</label><input type="text" id="noteSectionTitle" placeholder="e.g. Dibbeen Project, ESIA, General…" onkeydown="if(event.key==='Enter')saveNoteSection()"></div>
+    <div class="field"><label>Type</label>
+      <select id="noteSectionParent" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
+        <option value="">Top-level section</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addNoteSectionModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNoteSection()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPIKE / OVERRIDE MODAL -->
+<div class="overlay" id="overrideModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('overrideModal')">×</button>
+    <h2>⚡ Log Task / Busy Period</h2>
+    <p class="modal-sub">Log a specific day task or set a date range where your load differs from your project baseline</p>
+    <div class="info-box">Your <strong>project baseline</strong> is set by your project allocations. Use this to log <strong>ad-hoc tasks</strong> (e.g. a day-long review) or planned busy/quiet periods.</div>
+    <div id="ovPersonDisplay" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:14px"></div>
+    <input type="hidden" id="ovPerson">
+    <div class="two-col">
+      <div class="field"><label>From</label><input type="date" id="ovStart"></div>
+      <div class="field"><label>To</label><input type="date" id="ovEnd"></div>
+    </div>
+    <div class="field">
+      <label>Load % during this period</label>
+      <div class="slider-row">
+        <input type="range" min="0" max="100" value="80" id="ovLoad" oninput="updateOvUI()">
+        <span class="slider-val" id="ovLoadVal">80%</span>
+      </div>
+    </div>
+    <div class="field"><label>Reason</label><textarea id="ovReason" rows="2" placeholder="e.g. deliverable crunch, field survey week, leave..."></textarea></div>
+    <div id="ovHistorySection" style="margin-top:16px;display:none">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:8px">Past Busy Periods</div>
+      <div id="ovHistoryList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('overrideModal')">Cancel</button>
+      <button class="btn btn-primary" id="ovSaveBtn" onclick="saveOverrideForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJECT MODAL -->
+<div class="overlay" id="addProjModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addProjModal')">×</button>
+    <h2>Add Project</h2>
+    <p class="modal-sub">Projects set the baseline workload automatically across their entire duration</p>
+    <div class="two-col">
+      <div class="field"><label>Project Name</label><input type="text" id="pjName" placeholder="e.g. Dibbeen Jerash"></div>
+      <div class="field"><label>Client</label><input type="text" id="pjClient" placeholder="e.g. Sama Dibbeen"></div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Start Date</label><input type="date" id="pjStart"></div>
+      <div class="field"><label>End / Deliverable Date</label><input type="date" id="pjEnd"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="pjNotes" rows="2" placeholder="Scope, key milestones, special considerations..."></textarea></div>
+    <div class="info-box" style="margin-top:4px;margin-bottom:16px">💡 After saving, open the project card to add deliverables and deadlines.</div>
+    <div id="pjMembersWrap"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addProjModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEMBER TO PROJECT MODAL -->
+<div class="overlay" id="addProjMemberModal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('addProjMemberModal')">×</button>
+    <h2>Assign Team Member</h2>
+    <p class="modal-sub" id="assignProjLabel"></p>
+    <div class="field"><label>Team Member</label><select id="assignPerson"></select></div>
+    <div class="field">
+      <label>Their allocation to this project (%)</label>
+      <div class="slider-row">
+        <input type="range" min="5" max="100" step="5" value="50" id="assignAlloc" oninput="document.getElementById('assignAllocVal').textContent=this.value+'%'">
+        <span class="slider-val" id="assignAllocVal">50%</span>
+      </div>
+    </div>
+    <div class="info-box" id="allocWarning" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addProjMemberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAssignment()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEMBER MODAL -->
+<div class="overlay" id="addMemberModal">
+  <div class="modal" style="width:560px;max-height:85vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('addMemberModal')">×</button>
+    <h2>Add Team Members</h2>
+    <p class="modal-sub">Add one or more team members at once. Default password is <strong>1234</strong>.</p>
+    <div id="newMembersRows">
+      <!-- rows injected by JS -->
+    </div>
+    <button class="btn btn-accent" onclick="addMemberRow()" style="width:100%;justify-content:center;margin-top:8px;font-size:12px">＋ Add Another Person</button>
+    <div class="info-box" style="margin-top:12px">Each person logs in with password <strong>1234</strong> and can change it under Settings.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addMemberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addAllMembers()">Add Members</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY DETAIL MODAL -->
+<div class="overlay" id="dayModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('dayModal')">×</button>
+    <h2 id="dayModalTitle"></h2>
+    <p class="modal-sub">Workload based on project baselines + any weekly overrides</p>
+    <div id="dayModalBody"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-primary" onclick="closeModal('dayModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT DELIVERABLE MODAL -->
+<div class="overlay" id="editDelivModal">
+  <div class="modal" style="width:440px">
+    <button class="modal-close" onclick="closeModal('editDelivModal')">×</button>
+    <h2>Edit Deliverable</h2>
+    <p class="modal-sub" id="editDelivProjLabel"></p>
+    <div class="field"><label>Deliverable Name</label><input type="text" id="editDelivName"></div>
+    <div class="field"><label>Due Date</label><input type="date" id="editDelivDate"></div>
+    <div class="field"><label>Assigned To</label><select id="editDelivAssigned"></select></div>
+    <div style="border-top:1px solid var(--border);margin:14px 0 12px;padding-top:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px">Task Support</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Assign someone outside the project team for this deliverable only. Their load reflects from today until the due date.</div>
+      <div class="field" style="margin-bottom:8px"><label>Team Member</label><select id="editDelivSupport"><option value="">— None —</option></select></div>
+      <div class="field"><label>Allocation % for this task</label>
+        <input type="number" id="editDelivSupportAlloc" min="0" max="100" value="0" placeholder="e.g. 30"
+          style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteDeliverableFromEdit()">Delete</button>
+      <button class="btn" onclick="closeModal('editDelivModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditDeliverable()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DELIVERABLE MODAL -->
+<div class="overlay" id="addDelivModal">
+  <div class="modal" style="width:440px">
+    <button class="modal-close" onclick="closeModal('addDelivModal')">×</button>
+    <h2>Add Deliverable</h2>
+    <p class="modal-sub" id="delivProjLabel"></p>
+    <div class="field"><label>Deliverable Name</label><input type="text" id="delivName" placeholder="e.g. Scoping Report, Baseline Survey, Final Submission..."></div>
+    <div class="field"><label>Due Date</label><input type="date" id="delivDate"></div>
+    <div class="field"><label>Assigned To</label><select id="delivAssigned"></select></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addDelivModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDeliverable()">Add Deliverable</button>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK SUMMARY MODAL -->
+<div class="overlay" id="weekSummaryModal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('weekSummaryModal')">×</button>
+    <h2 id="weekSummaryTitle">Week of …</h2>
+    <div id="weekSummaryBody"></div>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal('weekSummaryModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settingsModal">
+  <div class="modal" style="width:460px">
+    <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+    <h2>Settings</h2>
+    <p class="modal-sub" id="settingsSubtitle"></p>
+    <div id="adminTeamSection" style="display:none;margin-bottom:18px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px">Manage Team</div>
+      <div id="adminTeamList"></div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:8px" onclick="closeModal('settingsModal');openAddMemberModal()">＋ Add Team Member</button>
+    </div>
+    <div id="regularNameSection">
+      <div class="field"><label>Display Name</label><input type="text" id="settingsName" placeholder="Your name"></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;margin-top:4px">Change Password</div>
+    <div id="adminPasswordNote" style="display:none" class="info-box">As admin, enter your current admin password to change it.</div>
+    <div class="field"><label>Current Password</label><input type="password" id="settingsCurrentPin" placeholder="Current password" autocomplete="current-password"></div>
+    <div class="two-col">
+      <div class="field"><label>New Password</label><input type="password" id="settingsNewPin" placeholder="New password" autocomplete="new-password"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="settingsConfirmPin" placeholder="Confirm" autocomplete="new-password"></div>
+    </div>
+    <div class="info-box">Leave password fields blank to save without changing password.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PALETTE = [
+  {bg:'#e8f5ef',fg:'#2d8f5e'},{bg:'#e8f0fc',fg:'#2563b0'},
+  {bg:'#fdecea',fg:'#c0392b'},{bg:'#fef3db',fg:'#b87d0e'},
+  {bg:'#f3e8ff',fg:'#7c3aed'},{bg:'#fef0e8',fg:'#c2500a'},
+  {bg:'#e8faf8',fg:'#0d7e70'},{bg:'#fce8f3',fg:'#be185d'},
+];
+
+let weekOffset=0, monthOffset=0;
+let tsData = null;
+const TS_WORKDAYS = [0,1,2,3,4]; // Sun=0 Mon=1 Tue=2 Wed=3 Thu=4 (Jordan workweek)
+let assigningProjectId = null;
+
+const TITLES = ['Intern','Associate','Senior Associate','Consultant','Senior Consultant','Manager','E&S Director'];
+
+const HR_USER = {id:9999, name:'HR', title:'HR', dept:'HR', c:{bg:'#e8f0fc',fg:'#2563b0'}};
+
+function isAdmin()   { return currentUser && currentUser.id === 1; } // Admin = Ibrahim (id 1)
+function isHR()      { return currentUser && currentUser.id === 9999; }
+function isPartner()     { return currentUser && currentUser.title === 'E&S Director'; }
+function canEditProject(proj) {
+  if(!currentUser) return false;
+  if(isAdmin()) return true; // Ibrahim can edit everything
+  return proj.creatorId === currentUser.id;
+}
+function canCreateAccounts() { return isAdmin(); }
+
+let team = [
+  {id:1, name:'Ibrahim Masri', title:'E&S Director', dept:'ESIA', c:PALETTE[0]},
+];
+
+let currentUser = null;
+
+let projects = [];
+let overrides = [];
+let notifications = [];
+
+function weekStart(date, offset=0) {
+  const d=new Date(date); d.setDate(d.getDate()-d.getDay()+offset*7); d.setHours(0,0,0,0); return d;
+}
+function wKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// Fixed date formatter — identical output on every browser/OS worldwide
+const MONTHS_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_LONG=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_LONG=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function fmt(d,short=false) {
+  const day=d.getDate(), mon=MONTHS_SHORT[d.getMonth()], yr=d.getFullYear();
+  return short ? `${mon} ${day}` : `${mon} ${day}, ${yr}`;
+}
+function fmtLong(d) { return `${DAYS_LONG[d.getDay()]}, ${MONTHS_LONG[d.getMonth()]} ${d.getDate()}`; }
+function fmtMonthYear(d) { return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`; }
+function fmtMonthYearShort(d) { return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`; }
+function isToday(d) { const t=new Date(); return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear(); }
+function initials(n) { return n.split(' ').map(x=>x[0]).join('').toUpperCase(); }
+function loadColor(l) { return l<60?'var(--green)':l<85?'var(--yellow)':l<100?'var(--orange)':l===100?'var(--red)':'#8b0000'; }
+function loadBg(l)    { return l<60?'#b8dfc9':l<85?'#f9d97a':l<100?'#fed7aa':'#f5a9a3'; }
+function chipClass(l) { return l<60?'chip-green':l<85?'chip-yellow':l<100?'chip-orange':l===100?'chip-red':'chip-overloaded'; }
+function chipLabel(l) { return l<60?'Available':l<85?'Busy':l<100?'Very Busy':l===100?'Full Capacity':'Overloaded'; }
+function getWeekDays(ws) { return Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);return d;}); }
+function dateInRange(d, start, end) {
+  const t=new Date(typeof d==='string'?d+'T12:00:00':d).getTime();
+  return t>=new Date(start+'T00:00:00').getTime() && t<=new Date(end+'T23:59:59').getTime();
+}
+function progressPct(start,end) {
+  const now=Date.now(), s=new Date(start+'T00:00:00').getTime(), e=new Date(end+'T23:59:59').getTime();
+  if(now<=s) return 0; if(now>=e) return 100;
+  return Math.round((now-s)/(e-s)*100);
+}
+function fmtPeriod(start, end) {
+  const s = new Date(start+'T12:00:00');
+  const e = new Date(end+'T12:00:00');
+  const sameYear = s.getFullYear()===e.getFullYear();
+  const sameMonth = sameYear && s.getMonth()===e.getMonth();
+  if(sameMonth) return fmtMonthYearShort(s);
+  const startLabel = fmtMonthYearShort(s);
+  const endLabel = fmtMonthYearShort(e);
+  const months = Math.round((e-s)/(1000*60*60*24*30.4));
+  const durLabel = months<1?'<1 mo':months===1?'1 mo':`${months} mo`;
+  return `${startLabel} → ${endLabel} <span style="font-size:10px;color:var(--muted);font-weight:400">(${durLabel})</span>`;
+}
+function daysUntil(dateStr) {
+  const diff = new Date(dateStr+'T23:59:59').getTime()-Date.now();
+  const d = Math.ceil(diff/86400000);
+  if(d<0) return 'Overdue';
+  if(d===0) return 'Due today';
+  if(d===1) return '1 day left';
+  if(d<=60) return d+' days left';
+  const m=Math.round(d/30.4); return m+' month'+(m>1?'s':'')+' left';
+}
+
+function getActiveTasks(personId) {
+  // Returns deliverables assigned to person that are not completed
+  const tasks = [];
+  projects.forEach(proj => {
+    (proj.deliverables||[]).forEach(d => {
+      if(d.assignedTo !== personId) return;
+      if(d.completed) return;
+      tasks.push({name: d.name, projName: proj.name, dueDate: d.date});
+    });
+  });
+  return tasks;
+}
+
+function getEffectiveLoad(personId, weekKeyStr) {
+  const ws = new Date(weekKeyStr+'T12:00:00');
+
+  // Check each work day individually
+  const workDays = [];
+  for(let i=0; i<5; i++) {
+    const d = new Date(ws); d.setDate(d.getDate()+i);
+    const dStr = wKey(d);
+
+    // Baseline for THIS specific day = sum of projects active on this exact day
+    let dayBaseline = 0;
+    let dayProjects = [];
+    const today0 = wKey(new Date());
+    projects.forEach(p => {
+      if(!dateInRange(d, p.start, p.end)) return;
+      const member = p.members.find(m=>m.personId===personId);
+      if(member && member.allocation > 0) {
+        dayBaseline += member.allocation;
+        dayProjects.push({name:p.name, alloc:member.allocation});
+      }
+      // Task support: add if person is supportId on any active deliverable and today is within range
+      (p.deliverables||[]).forEach(del=>{
+        if(del.supportId===personId && !del.completed && del.supportAlloc>0) {
+          const dStr2=wKey(d);
+          if(dStr2>=today0 && dStr2<=del.date) {
+            dayBaseline+=del.supportAlloc;
+            dayProjects.push({name:p.name+' (task)', alloc:del.supportAlloc});
+          }
+        }
+      });
+    });
+
+    // Check overrides for this specific day
+    const dayOverrides = overrides.filter(o =>
+      o.personId === personId && o.start <= dStr && o.end >= dStr
+    );
+    if(dayOverrides.length) {
+      workDays.push({load: Math.max(...dayOverrides.map(o=>o.load)), isOverride:true,
+        baseline:dayBaseline, reasons:dayOverrides.map(o=>o.reason), projects:dayProjects});
+    } else {
+      workDays.push({load:dayBaseline, isOverride:false, baseline:dayBaseline, reasons:[], projects:dayProjects});
+    }
+  }
+
+  // Weekly summary
+  const overrideDays = workDays.filter(d=>d.isOverride);
+  const hasOverride = overrideDays.length > 0;
+  const avgLoad = Math.round(workDays.reduce((s,d)=>s+d.load,0) / workDays.length);
+
+  // Use Mon as reference for project tags (most representative workday)
+  const refDay = workDays[1] || workDays[0];
+  const activeProjects = refDay ? refDay.projects : [];
+  const baselineLoad = refDay ? refDay.baseline : 0;
+  const allReasons = [...new Set(overrideDays.flatMap(d=>d.reasons))].filter(Boolean);
+
+  return {
+    load: avgLoad,
+    isOverride: hasOverride,
+    baseline: baselineLoad,
+    reason: allReasons.join(' · '),
+    projects: activeProjects,
+    overrideDays,
+    workDays
+  };
+}
+
+function updateSummary() {
+  const wk = wKey(weekStart(new Date(), weekOffset));
+  const loads = team.map(p=>getEffectiveLoad(p.id, wk).load);
+  const avg = Math.round(loads.reduce((a,b)=>a+b,0)/loads.length);
+  document.getElementById('s-avail').textContent  = (100-avg)+'%';
+  document.getElementById('s-green').textContent  = loads.filter(l=>l<60).length;
+  document.getElementById('s-yellow').textContent = loads.filter(l=>l>=60&&l<100).length;
+  document.getElementById('s-red').textContent    = loads.filter(l=>l>=100).length;
+  document.getElementById('headerDate').textContent = 'Today · '+fmt(new Date());
+}
+
+function renderWeekly() {
+  const ws = weekStart(new Date(), weekOffset);
+  const days = getWeekDays(ws);
+  document.getElementById('weekLabel').textContent = fmt(days[0],true)+' – '+fmt(days[4],true);
+
+  document.getElementById('weekHead').innerHTML =
+    `<div class="gh-cell" style="text-align:left">Team Member</div>`+
+    days.map(d=>{
+      const dow=d.getDay(), isWE=dow===5||dow===6;
+      return `<div class="gh-cell${isToday(d)?' today-col':isWE?' weekend-col':''}">
+        ${DAYS_SHORT[d.getDay()]}<br>
+        <strong>${fmt(d,true)}</strong>
+      </div>`;
+    }).join('');
+
+  const wk = wKey(ws);
+  document.getElementById('weekRows').innerHTML = team.map(p=>{
+    const eff = getEffectiveLoad(p.id, wk);
+    const isMe = currentUser && currentUser.id === p.id;
+    // Hours free this week: 40h total - (avgLoad% * 40h)
+    const hoursUsed = Math.round(eff.load / 100 * 40);
+    const hoursFree = Math.max(0, 40 - hoursUsed);
+    const freeLabel = eff.load > 100 ? 'Overloaded' : `${hoursFree} hr${hoursFree!==1?'s':''} free`;
+    const hrsColor = hoursFree >= 24 ? 'var(--green)' : hoursFree >= 8 ? 'var(--yellow)' : hoursFree >= 1 ? 'var(--orange)' : 'var(--red)';
+    const projSummary = eff.projects.length
+      ? `${eff.projects.length} project${eff.projects.length>1?'s':''} · ${freeLabel}`
+      : `No active projects · 40 hrs free`;
+
+    const cells = days.map((d,di)=>{
+      const dow=d.getDay(), isWE=dow===5||dow===6;
+      if(isWE) return `<div class="day-cell weekend"><div class="weekend-label">Weekend</div></div>`;
+
+      // Use per-day data from getEffectiveLoad (indices 0-4 = Sun-Thu)
+      const dayData = eff.workDays ? eff.workDays[di > 4 ? 4 : di] : null;
+      const dayLoad = dayData ? dayData.load : 0;
+      const isDayOverride = dayData ? dayData.isOverride : false;
+      const dayBaseline = dayData ? dayData.baseline : 0;
+      const dayReason = dayData ? dayData.reasons.filter(Boolean).join(' · ') : '';
+      const overBy = dayLoad > 100 ? dayLoad - 100 : 0;
+
+      return `<div class="day-cell${isToday(d)?' today-col':''}${isMe?' clickable-cell':''}"
+        ${isMe?`onclick="openOverrideForPerson(${p.id},'${wk}')"`:''} style="${isMe?'':'cursor:default'}">
+        <div class="load-row">
+          <span class="load-pct" style="color:${loadColor(dayLoad)}">${dayLoad}%</span>
+          ${isDayOverride
+            ? `<span class="spike-badge">⚡</span>`
+            : `<span class="chip ${chipClass(dayLoad)}">${chipLabel(dayLoad)}</span>`}
+        </div>
+        <div class="bar-wrap">
+          ${isDayOverride?`<div class="bar-fill" style="width:${Math.min(dayBaseline,100)}%;background:#b8dfc9;opacity:0.4"></div>`:''}
+          <div class="bar-fill" style="width:${Math.min(dayLoad,100)}%;background:${loadBg(dayLoad)};margin-top:${isDayOverride?'2px':'0'}"></div>
+        </div>
+        ${overBy>0?`<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:2px">⚠ ${overBy}% over</div>`:''}
+        ${isDayOverride && dayReason ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${dayReason.length>28?dayReason.slice(0,28)+'…':dayReason}</div>` : ''}
+        ${isMe?`<div style="font-size:9px;color:var(--muted);margin-top:3px;opacity:0.6">✎ Edit</div>`:''}
+      </div>`;
+    }).join('');
+
+    const overBy = eff.load > 100 ? eff.load - 100 : 0;
+    return `<div class="g-row">
+      <div class="person-cell">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg}">${initials(p.name)}</div>
+        <div>
+          <div class="p-name">${p.name}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${eff.projects.length ? `${eff.projects.length} project${eff.projects.length>1?'s':''}` : 'No active projects'}</div>
+          <div style="font-size:10px;font-weight:600;margin-top:2px;color:${hrsColor}">${freeLabel}</div>
+          ${overBy>0?`<div style="font-size:9px;font-weight:700;color:var(--red)">⚠ ${overBy}% over capacity</div>`:''}
+        </div>
+      </div>${cells}
+    </div>`;
+  }).join('');
+}
+
+let yearlyViewYear = new Date().getFullYear();
+let workloadView = 'weekly';
+
+function setWorkloadView(view) {
+  workloadView = view;
+  document.getElementById('toggleWeekly').style.background = view==='weekly' ? 'var(--text)' : '';
+  document.getElementById('toggleWeekly').style.color = view==='weekly' ? '#fff' : 'var(--text2)';
+  document.getElementById('toggleYearly').style.background = view==='yearly' ? 'var(--text)' : '';
+  document.getElementById('toggleYearly').style.color = view==='yearly' ? '#fff' : 'var(--text2)';
+  document.getElementById('weeklyGridWrap').style.display = view==='weekly' ? '' : 'none';
+  document.getElementById('yearlyGridWrap').style.display = view==='yearly' ? '' : 'none';
+  document.getElementById('weekNavControls').style.display = view==='weekly' ? '' : 'none';
+  document.getElementById('yearNavControls').style.display = view==='yearly' ? '' : 'none';
+  document.getElementById('weeklyViewTitle').textContent = view==='weekly' ? 'Weekly Workload' : 'Yearly Projection';
+  if(view==='yearly') renderYearly();
+}
+
+function shiftYear(d) { yearlyViewYear += d; renderYearly(); }
+
+function getMonthAvgLoad(personId, year, month) {
+  const samples = [];
+  for(let day = 1; day <= 28; day += 7) {
+    const d = new Date(year, month, day);
+    const wk = wKey(weekStart(d, 0));
+    samples.push(getEffectiveLoad(personId, wk).load);
+  }
+  return Math.round(samples.reduce((a,b)=>a+b,0)/samples.length);
+}
+
+function renderYearly() {
+  yearlyViewYear = yearlyViewYear || new Date().getFullYear();
+  document.getElementById('yearLabel').textContent = yearlyViewYear;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const curMonth = new Date().getMonth();
+  const curYear = new Date().getFullYear();
+
+  document.getElementById('yearHead').className = 'year-head';
+  document.getElementById('yearHead').innerHTML =
+    `<div class="gh-cell" style="text-align:left">Team Member</div>` +
+    months.map((m, i) => {
+      const isPast = yearlyViewYear < curYear || (yearlyViewYear===curYear && i < curMonth);
+      const isCur  = yearlyViewYear===curYear && i===curMonth;
+      return `<div class="gh-cell${isCur?' today-col':''}" style="${isPast?'color:var(--muted)':''}">${m}</div>`;
+    }).join('');
+
+  document.getElementById('yearRows').innerHTML = team.map(p => {
+    const cells = months.map((m, i) => {
+      const load = getMonthAvgLoad(p.id, yearlyViewYear, i);
+      const isPast = yearlyViewYear < curYear || (yearlyViewYear===curYear && i < curMonth);
+      const isCur  = yearlyViewYear===curYear && i===curMonth;
+      return `<div class="year-cell${isCur?' today-col':''}" style="${isPast?'opacity:0.5':''}">
+        <div style="font-size:12px;font-weight:700;color:${load===0?'var(--muted)':loadColor(load)}">${load===0?'—':load+'%'}</div>
+        <div class="year-load-bar" style="background:${load===0?'var(--border)':loadBg(load)};opacity:${isPast?0.5:1}"></div>
+        ${load>0&&!isPast?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${chipLabel(load)}</div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="year-row">
+      <div class="person-cell">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg}">${initials(p.name)}</div>
+        <div><div class="p-name">${p.name}</div>${isAdmin()?`<div class="p-role">${p.title||''}</div>`:''}</div>
+      </div>${cells}
+    </div>`;
+  }).join('');
+}
+
+function shiftWeek(d) { weekOffset+=d; renderWeekly(); updateSummary(); }
+
+function renderMonthly() {
+  const today=new Date();
+  const target=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
+  document.getElementById('monthLabel').textContent =
+    fmtMonthYear(target);
+  const year=target.getFullYear(), month=target.getMonth();
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const daysInPrev=new Date(year,month,0).getDate();
+
+  let cells=[];
+  for(let i=0;i<firstDay;i++) cells.push({day:daysInPrev-firstDay+1+i,month:'prev'});
+  for(let i=1;i<=daysInMonth;i++) cells.push({day:i,month:'cur'});
+  while(cells.length%7!==0) cells.push({day:cells.length-daysInMonth-firstDay+1,month:'next'});
+
+  const weeks=[];
+  for(let i=0;i<cells.length;i+=7) weeks.push(cells.slice(i,i+7));
+
+  document.getElementById('calWeeks').innerHTML = weeks.map(week=>`
+    <div class="cal-week">
+      ${week.map((cell)=>{
+        const isOther=cell.month!=='cur';
+        let cellDate, isT=false;
+        if(cell.month==='prev')       cellDate=new Date(year,month-1,cell.day);
+        else if(cell.month==='next')  cellDate=new Date(year,month+1,cell.day);
+        else { cellDate=new Date(year,month,cell.day); isT=isToday(cellDate); }
+
+        const dow=cellDate.getDay();
+        const isWE=dow===5||dow===6;
+        const wk=wKey(weekStart(cellDate,0));
+        const dateStr=wKey(cellDate);
+
+        // Filter projects based on calendar filter
+        const uid = currentUser ? currentUser.id : null;
+        const visibleProjects = calFilter==='mine' && uid
+          ? projects.filter(p =>
+              p.creatorId===uid ||
+              (p.members||[]).some(m=>m.personId===uid) ||
+              (p.deliverables||[]).some(d=>d.assignedTo===uid)
+            )
+          : projects;
+
+        const deliverablePins=!isOther ? visibleProjects.flatMap(proj=>
+          (proj.deliverables||[]).filter(d=>d.date===dateStr).map(d=>{
+            // In 'mine' mode, additionally highlight items directly assigned to user
+            const isMyTask = uid && d.assignedTo===uid;
+            const assignee = d.assignedTo ? team.find(t=>t.id===d.assignedTo) : null;
+            const statusIcon = d.completed ? '✅' : d.pendingApproval ? '⏳' : '📌';
+            const pinBg = d.completed ? '#f0f9f4' : d.pendingApproval ? '#fff9e6' : '#fefce8';
+            const pinBorder = d.completed ? '#b8dfc9' : d.pendingApproval ? '#ffc107' : isMyTask ? '#2d8f5e' : '#fde68a';
+            return `<div class="deliv-pin" style="background:${pinBg};border-color:${pinBorder}"
+              title="${proj.name}: ${d.name}${assignee?' — '+assignee.name:''}"
+              onclick="event.stopPropagation();${(currentUser&&canEditProject(proj))?`openEditDeliverable(${proj.id},'${d.id}')`:``}">
+              <span style="font-size:9px;flex-shrink:0">${statusIcon}</span>
+              <span class="deliv-pin-text">${proj.name}: ${d.name}</span>
+              ${assignee?`<div class="avatar" style="background:${assignee.c.bg};color:${assignee.c.fg};width:12px;height:12px;font-size:6px;flex-shrink:0">${initials(assignee.name)}</div>`:''}
+            </div>`;
+          })
+        ).join('') : '';
+
+        let dayClass=`cal-day${isOther?' other-month':''}${isT?' today':''}`;
+        let dayStyle='';
+        if(isWE&&!isOther) dayStyle='background:#f7f5f2;';
+        const clickable=!isOther&&!isWE;
+
+        return `<div class="${dayClass}" style="${dayStyle}"
+          ${clickable?`onclick="openDayModal('${dateStr}')"`:''}>
+          <div class="cal-day-num">${cell.day}</div>
+          ${deliverablePins}
+          ${(isWE&&!isOther)?`<div style="font-size:10px;color:#ccc;font-style:italic;margin-top:4px">Weekend</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+function shiftMonth(d) { monthOffset+=d; renderMonthly(); }
+
+let projFilter = 'all'; // 'all' or 'mine'
+let calFilter  = 'all'; // 'all' or 'mine'
+
+function setCalFilter(f) {
+  calFilter = f;
+  document.getElementById('calFilterAll').style.background  = f==='all'  ? 'var(--text)' : '';
+  document.getElementById('calFilterAll').style.color       = f==='all'  ? '#fff' : 'var(--text2)';
+  document.getElementById('calFilterMine').style.background = f==='mine' ? 'var(--text)' : '';
+  document.getElementById('calFilterMine').style.color      = f==='mine' ? '#fff' : 'var(--text2)';
+  renderMonthly();
+}
+
+function setProjFilter(f) {
+  projFilter = f;
+  document.getElementById('projFilterAll').style.background  = f==='all'  ? 'var(--text)' : '';
+  document.getElementById('projFilterAll').style.color       = f==='all'  ? '#fff' : 'var(--text2)';
+  document.getElementById('projFilterMine').style.background = f==='mine' ? 'var(--text)' : '';
+  document.getElementById('projFilterMine').style.color      = f==='mine' ? '#fff' : 'var(--text2)';
+  renderProjects();
+}
+
+function renderProjects() {
+  const uid = currentUser ? currentUser.id : null;
+  const filtered = projFilter==='mine' && uid
+    ? projects.filter(p=>(p.members||[]).some(m=>m.personId===uid) || p.creatorId===uid)
+    : projects;
+
+  if(!filtered.length) {
+    document.getElementById('projGrid').innerHTML =
+      `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:14px">${projFilter==='mine'?'No projects assigned to you yet.':'No projects yet. Add one to get started.'}</div>`;
+    return;
+  }
+  document.getElementById('projGrid').innerHTML = filtered.map(p=>{
+    const activeMembers = p.members.filter(m=>m.allocation>0);
+    const totalAlloc = activeMembers.reduce((s,m)=>s+m.allocation,0);
+    const completedDelivs = (p.deliverables||[]).filter(d=>d.completed).length;
+    const totalDelivs = (p.deliverables||[]).length;
+    const prog = progressPct(p.start, p.end);
+    const delivs = p.deliverables||[];
+    const futureDelivs = delivs.filter(d=>!d.completed && new Date(d.date+'T23:59:59')>=new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const earliestDate = futureDelivs.length ? futureDelivs[0].date : null;
+    const upcomingGroup = earliestDate ? futureDelivs.filter(d=>d.date===earliestDate) : [];
+    const isMyProject = currentUser && canEditProject(p);
+    const pmPerson = team.find(t=>t.id===p.creatorId);
+
+    const dataWarnings = [];
+    if(p.end <= p.start) dataWarnings.push('⚠ Project end date is before or on start date');
+    delivs.forEach(d=>{
+      if(d.date < p.start) dataWarnings.push(`⚠ "${d.name}" due date is before project start`);
+      if(d.date > p.end)   dataWarnings.push(`⚠ "${d.name}" due date is after project end`);
+    });
+    p.members.forEach(m=>{
+      if(m.allocation > 100) dataWarnings.push(`⚠ ${team.find(t=>t.id===m.personId)?.name.split(' ')[0]||'Member'} allocation exceeds 100%`);
+    });
+    const warningBanner = dataWarnings.length
+      ? `<div style="background:#fff0f0;border:1px solid #f5a9a3;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--red);line-height:1.6">${dataWarnings.join('<br>')}</div>`
+      : '';
+
+    const memberPills = p.members.map(m=>{
+      const person=team.find(t=>t.id===m.personId);
+      if(!person) return '';
+      const isPM = m.personId===p.creatorId;
+      return `<div class="proj-member-pill" style="${isPM?'border-color:#1a1714;background:#f5f3f0':''}">
+        <div class="avatar" style="background:${person.c.bg};color:${person.c.fg};width:20px;height:20px;font-size:9px">${initials(person.name)}</div>
+        <span>${person.name.split(' ')[0]}</span>
+        <span style="color:var(--muted);font-size:10px">${m.allocation}%</span>
+        ${isPM?`<span class="pm-badge">PM</span>`:`<span style="font-size:9px;color:var(--muted)">Support</span>`}
+      </div>`;
+    }).join('');
+
+    const delivRows = delivs.map(d=>{
+      const due=daysUntil(d.date);
+      const dueColor=due==='Overdue'?'var(--red)':due.includes('day')&&parseInt(due)<14?'var(--orange)':'var(--text2)';
+      const canEdit = isMyProject;
+      const assignee = d.assignedTo ? team.find(t=>t.id===d.assignedTo) : null;
+      const supporter = d.supportId ? team.find(t=>t.id===d.supportId) : null;
+      const statusIcon = d.completed ? '✅' : d.pendingApproval ? '⏳' : '📌';
+      const statusBg = d.completed ? '#f0f9f4' : d.pendingApproval ? '#fff9e6' : 'transparent';
+      const statusBorder = d.completed ? '#b8dfc9' : d.pendingApproval ? '#ffc107' : 'transparent';
+      return `<div class="deliv-row${canEdit&&!d.completed?' deliv-row-edit':''}"
+        style="background:${statusBg};border:1px solid ${statusBorder};border-radius:8px;margin-bottom:4px"
+        ${canEdit&&!d.completed?`onclick="openEditDeliverable(${p.id},'${d.id}')"`:''}>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px">${statusIcon}</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;${d.completed?'text-decoration:line-through;color:var(--muted)':''}">${d.name}</div>
+            <div style="font-size:10px;color:${d.completed?'var(--green)':d.pendingApproval?'var(--orange)':dueColor};font-weight:500">
+              ${d.completed ? 'Completed ✓' : d.pendingApproval ? 'Pending PM approval' : fmt(new Date(d.date+'T12:00:00'))+' · '+due}
+            </div>
+            ${assignee?`<div style="font-size:10px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:4px"><div class="avatar" style="background:${assignee.c.bg};color:${assignee.c.fg};width:14px;height:14px;font-size:7px;flex-shrink:0">${initials(assignee.name)}</div>${assignee.name}</div>`:''}
+            ${supporter?`<div style="font-size:10px;color:var(--orange);margin-top:1px;display:flex;align-items:center;gap:4px"><div class="avatar" style="background:${supporter.c.bg};color:${supporter.c.fg};width:14px;height:14px;font-size:7px;flex-shrink:0">${initials(supporter.name)}</div>${supporter.name} · Task Support ${d.supportAlloc?d.supportAlloc+'%':''}</div>`:''}
+          </div>
+        </div>
+        ${d.pendingApproval && isMyProject
+          ? `<div style="display:flex;gap:4px">
+               <button class="btn btn-sm" style="background:var(--green);color:#fff;border-color:var(--green);font-size:10px;padding:3px 8px" onclick="event.stopPropagation();approveDeliverable(${p.id},'${d.id}',true)">✓ Approve</button>
+               <button class="btn btn-sm btn-danger" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();approveDeliverable(${p.id},'${d.id}',false)">✕</button>
+             </div>`
+          : d.completed && canEdit
+            ? `<button class="btn btn-sm" onclick="event.stopPropagation();unCompleteDeliverable(${p.id},'${d.id}')" style="font-size:10px;color:var(--muted)">↩ Undo</button>`
+            : canEdit&&!d.completed?`<span style="font-size:11px;color:var(--muted);font-weight:500">Edit ›</span>`:''
+        }
+      </div>`;
+    }).join('');
+
+    return `<div class="proj-card">
+      ${warningBanner}
+      <div class="proj-card-top">
+        <div style="flex:1;min-width:0">
+          <div class="proj-name">${p.name}</div>
+          <div class="proj-client" style="margin-bottom:6px">${p.client}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${pmPerson?`<div class="avatar" style="background:${pmPerson.c.bg};color:${pmPerson.c.fg};width:20px;height:20px;font-size:9px">${initials(pmPerson.name)}</div>
+            <span style="font-size:11px;color:var(--text2);font-weight:500">${pmPerson.name}</span>`:''}
+            <span class="pm-badge">Project Manager</span>
+            ${isMyProject?`<span style="font-size:10px;color:var(--green);font-weight:600">✓ Your project</span>`:''}
+          </div>
+        </div>
+        <div class="proj-alloc-badge" style="color:var(--text);flex-shrink:0;text-align:center">
+          ${activeMembers.length + new Set((p.deliverables||[]).filter(d=>d.supportId&&!d.completed).map(d=>d.supportId)).size}/${team.length}
+          <div style="font-size:10px;color:var(--muted);font-weight:400;font-family:'DM Sans',sans-serif">members</div>
+          ${totalDelivs>0?`<div style="font-size:10px;color:var(--green);font-weight:600;margin-top:2px">${completedDelivs}/${totalDelivs} done</div>`:''}
+        </div>
+      </div>
+      <div class="proj-meta" style="margin-top:10px">
+        <div class="proj-meta-row"><span class="proj-meta-label">Period</span><span>${fmtPeriod(p.start, p.end)}</span></div>
+        ${upcomingGroup.length ? `<div class="proj-meta-row"><span class="proj-meta-label">Next due</span><span style="font-weight:600;color:${daysUntil(earliestDate)==='Overdue'?'var(--red)':parseInt(daysUntil(earliestDate))<14?'var(--orange)':'var(--text2)'}">
+          ${upcomingGroup.map(d=>d.name).join(' · ')} &nbsp;<span style="font-weight:400;font-size:11px">${daysUntil(earliestDate)}</span>
+        </span></div>` : ''}
+      </div>
+      <div class="timeline-bar-wrap"><div class="timeline-bar" style="width:${prog}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px;margin-bottom:10px">${prog}% of timeline elapsed</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Deliverables</div>
+      ${delivRows||`<div style="font-size:12px;color:var(--muted);padding:6px 0">No deliverables added yet</div>`}
+      ${isMyProject
+        ? `<button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:4px;margin-bottom:10px" onclick="openAddDeliverable(${p.id})">+ Add Deliverable</button>`
+        : `<div style="height:10px"></div>`}
+      ${p.notes?`<div style="font-size:11px;color:var(--text2);margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:6px">${p.notes}</div>`:''}
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Team</div>
+      <div class="proj-team">${memberPills}</div>
+      <div class="proj-actions">
+        ${isMyProject
+          ? `<button class="btn btn-sm" onclick="openEditProject(${p.id})">✎ Edit Project</button>
+             <button class="btn btn-sm" onclick="openAssignMember(${p.id})">+ Add Member</button>
+             <button class="btn btn-sm btn-danger" onclick="deleteProject(${p.id})">Remove</button>`
+          : `<button class="btn btn-sm" style="opacity:0.4;cursor:pointer" onclick="showNoAccess(${p.id},${p.creatorId})">+ Add Member</button>
+             <button class="btn btn-sm btn-danger" style="opacity:0.4" onclick="showNoAccess(${p.id},${p.creatorId})">Remove</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let deletingProjectId = null;
+function deleteProject(id) {
+  const proj = projects.find(p=>p.id===id);
+  if(!canEditProject(proj)) { showNoAccess(proj.id,proj.creatorId); return; }
+  deletingProjectId = id;
+  document.getElementById('confirmDeleteMsg').textContent =
+    'This will remove "' + proj.name + '" and all its baselines. This cannot be undone.';
+  document.getElementById('confirmDeleteBtn').onclick = function() {
+    projects = projects.filter(p=>p.id!==deletingProjectId);
+    deleteProjectFromDB(deletingProjectId);
+    closeModal('confirmDeleteModal');
+    renderProjects(); renderWeekly(); renderMonthly(); updateSummary();
+    showToast('Project removed');
+  };
+  openOverlay('confirmDeleteModal');
+}
+
+let editingProjectId = null;
+function openEditProject(id) {
+  const proj = projects.find(p=>p.id===id);
+  if(!canEditProject(proj)) { showNoAccess(proj.id,proj.creatorId); return; }
+  editingProjectId = id;
+  document.getElementById('editProjSubtitle').textContent = 'Editing: ' + proj.name;
+  document.getElementById('epName').value = proj.name;
+  document.getElementById('epClient').value = proj.client;
+  document.getElementById('epStart').value = proj.start;
+  document.getElementById('epEnd').value = proj.end;
+  document.getElementById('epNotes').value = proj.notes||'';
+  const wrap = document.getElementById('epMembersWrap');
+  // Only show members already on the project — use + Add Member to add new ones
+  const projMemberIds = new Set(proj.members.map(m=>m.personId));
+  const displayTeam = team.filter(p=>projMemberIds.has(p.id) || p.id===proj.creatorId);
+  wrap.innerHTML = displayTeam.map(p=>{
+    const existing = proj.members.find(m=>m.personId===p.id);
+    const val = existing ? existing.allocation : 0;
+    const isCreator = p.id===proj.creatorId;
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+      <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:26px;height:26px;font-size:10px">${initials(p.name)}</div>
+      <span style="flex:1;font-size:13px;font-weight:500">${p.name}${isCreator?' <span class="pm-badge">PM</span>':''}</span>
+      <label style="font-size:11px;color:var(--muted)">Alloc:</label>
+      <input type="number" min="0" max="100" step="5" value="${val}" id="epAlloc_${p.id}" style="width:65px;text-align:center;padding:5px 8px">
+      <span style="font-size:11px;color:var(--muted)">%</span>
+    </div>`;
+  }).join('');
+  openOverlay('editProjModal');
+}
+function saveEditProject() {
+  const proj = projects.find(p=>p.id===editingProjectId);
+  const name = document.getElementById('epName').value.trim();
+  const client = document.getElementById('epClient').value.trim();
+  const start = document.getElementById('epStart').value;
+  const end = document.getElementById('epEnd').value;
+  if(!name||!start||!end) { showToast('Please fill in name, start and end date'); return; }
+  if(end <= start) { showToast('⚠ End date must be after start date'); return; }
+  const outOfRange = (proj.deliverables||[]).filter(d=>d.date<start||d.date>end);
+  if(outOfRange.length) showToast(`⚠ ${outOfRange.length} deliverable(s) fall outside this date range — update them too`, 5000);
+  proj.name=name; proj.client=client; proj.start=start; proj.end=end;
+  proj.notes=document.getElementById('epNotes').value.trim();
+  proj.members=[];
+  // Build members from current project members + PM only
+  const savedMemberIds = new Set(proj.members_snapshot||[]);
+  team.forEach(p=>{
+    const input=document.getElementById('epAlloc_'+p.id);
+    if(!input) return; // not shown in edit modal = not a project member
+    const v=parseInt(input.value)||0;
+    if(v>0) proj.members.push({personId:p.id,allocation:v,role:p.id===proj.creatorId?'pm':'coordinator'});
+  });
+  if(!proj.members.find(m=>m.personId===proj.creatorId)) {
+    proj.members.unshift({personId:proj.creatorId,allocation:0,role:'pm'});
+  }
+  closeModal('editProjModal');
+  saveProject(proj);
+  renderProjects(); renderWeekly(); renderMonthly(); updateSummary();
+  showToast('Project updated ✓');
+}
+
+function populateFinderWeeks() {
+  const today = new Date();
+  const end = new Date(today); end.setDate(end.getDate()+28);
+  document.getElementById('finderStart').value = wKey(today);
+  document.getElementById('finderEnd').value = wKey(end);
+}
+
+function renderFinder() {
+  const threshold = parseInt(document.getElementById('threshSlider').value);
+  const startVal = document.getElementById('finderStart').value;
+  const endVal = document.getElementById('finderEnd').value;
+  const grid = document.getElementById('finderGrid');
+  if(!startVal || !endVal) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:14px">Please select a date range.</div>`; return; }
+  if(new Date(endVal) < new Date(startVal)) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:14px">End date must be after start date.</div>`; return; }
+
+  const weeks = [];
+  let cur = new Date(weekStart(new Date(startVal+'T12:00:00'), 0));
+  const endDate = new Date(endVal+'T12:00:00');
+  while(cur <= endDate) { weeks.push(wKey(cur)); cur = new Date(cur); cur.setDate(cur.getDate()+7); }
+  if(!weeks.length) weeks.push(wKey(new Date(startVal+'T12:00:00')));
+
+  const results = team.map(p => {
+    const loads = weeks.map(wk => getEffectiveLoad(p.id, wk).load);
+    const avgLoad = Math.round(loads.reduce((a,b)=>a+b,0) / loads.length);
+    const peakLoad = Math.max(...loads);
+    const avgFree = 100 - avgLoad;
+    const hasSpike = weeks.some(wk => getEffectiveLoad(p.id, wk).isOverride);
+    const activeProjs = new Map();
+    weeks.forEach(wk => { getEffectiveLoad(p.id, wk).projects.forEach(x => activeProjs.set(x.name, x.alloc)); });
+    return { p, avgLoad, peakLoad, avgFree, hasSpike, activeProjs };
+  }).filter(r => r.avgFree >= threshold).sort((a,b) => a.avgLoad - b.avgLoad);
+
+  const weekCount = weeks.length;
+  const rangeLabel = weekCount === 1 ? '1 week' : weekCount + ' weeks';
+
+  if(!results.length) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:14px">No one has ≥${threshold}% free on average across this period.</div>`; return; }
+
+  grid.innerHTML = results.map(({p, avgLoad, peakLoad, avgFree, hasSpike, activeProjs})=>`
+    <div class="finder-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg}">${initials(p.name)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">${p.name}</div>
+          ${isAdmin()?`<div style="font-size:10px;color:var(--muted)">${p.title||''}</div>`:''}
+        </div>
+      </div>
+      <div class="finder-avail" style="color:${loadColor(avgLoad)}">${avgFree}% avg free</div>
+      <div class="bar-wrap" style="margin-bottom:6px"><div class="bar-fill" style="width:${avgFree}%;background:${loadBg(avgLoad)}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Avg load ${avgLoad}% · Peak ${peakLoad}% · ${rangeLabel}</div>
+      ${hasSpike?`<div style="font-size:10px;color:var(--orange);margin-bottom:4px">⚡ Has a busy period in this range</div>`:''}
+      <div class="finder-projects">
+        ${activeProjs.size ? '📋 '+[...activeProjs.entries()].map(([n,a])=>`${n} (${a}%)`).join('<br>') : '<span style="color:var(--muted)">No active projects in range</span>'}
+      </div>
+    </div>`).join('');
+}
+
+const pins = {};
+let loginSelectedId = null;
+let pinEntry = '';
+
+function loadPersistedSession() {
+  try {
+    const saved = localStorage.getItem('wt_session');
+    if(!saved) return false;
+    const { userId } = JSON.parse(saved);
+    const uid = typeof userId === 'string' ? (userId === '9999' ? 9999 : parseInt(userId)) : userId;
+    const user = uid === 9999 ? HR_USER : team.find(p=>p.id===uid);
+    if(!user) { clearSession(); return false; } // clear stale session
+    currentUser = user;
+    document.getElementById('loginScreen').style.display = 'none';
+    applyLogin();
+    return true;
+  } catch(e) { clearSession(); return false; }
+}
+function persistSession() { try { localStorage.setItem('wt_session', JSON.stringify({userId:currentUser.id})); } catch(e){} }
+function clearSession() { try { localStorage.removeItem('wt_session'); } catch(e){} }
+
+function loadPins() {
+  try { const saved = localStorage.getItem('wt_pins'); if(saved) Object.assign(pins, JSON.parse(saved)); } catch(e){}
+  team.forEach(p=>{ if(!pins[p.id]) pins[p.id]='1234'; });
+  if(!pins[9999]) pins[9999]='1234'; // HR default password
+}
+function savePins() { try { localStorage.setItem('wt_pins', JSON.stringify(pins)); } catch(e){} }
+
+function loadNames() {
+  try { const saved = localStorage.getItem('wt_names'); if(!saved) return; const names = JSON.parse(saved); team.forEach(p=>{ if(names[p.id]) p.name=names[p.id]; }); } catch(e){}
+}
+function saveNames() { try { const names={}; team.forEach(p=>names[p.id]=p.name); localStorage.setItem('wt_names', JSON.stringify(names)); } catch(e){} }
+
+function getLoginUsers() { return [...team, HR_USER]; }
+
+function populateLoginSelect() {
+  const sel = document.getElementById('loginSelect');
+  // Deduplicate by ID in case Supabase has duplicates
+  const seen = new Set();
+  const uniqueUsers = getLoginUsers().filter(p=>{ if(seen.has(p.id)) return false; seen.add(p.id); return true; });
+  sel.innerHTML = `<option value="">— Who are you? —</option>` +
+    uniqueUsers.map(p=>`<option value="${p.id}">${p.name}${isAdminUser(p)?' (Admin)':''}</option>`).join('');
+}
+
+function isAdminUser(p) { return p.id === 1; } // Admin = Ibrahim (id 1)
+
+function showPwField() {
+  const val=document.getElementById('loginSelect').value;
+  const wrap=document.getElementById('loginPwWrap');
+  if(wrap) wrap.style.display=val?'block':'none';
+  if(val) setTimeout(()=>{const pw=document.getElementById('loginPassword');if(pw)pw.focus();},50);
+}
+
+function doDirectLogin() {
+  const sel = document.getElementById('loginSelect');
+  const val = sel.value;
+  if(val === '') { showToast('Please select your name'); return; }
+  const pwEl = document.getElementById('loginPassword');
+  const entered = pwEl ? pwEl.value : '';
+  const id = val === '9999' ? 9999 : parseInt(val);
+  const user = id === 9999 ? HR_USER : team.find(p=>p.id===id);
+  if(!user) { showToast('Please select your name'); return; }
+  // Check password
+  const correctPin = pins[id] || '1234';
+  if(entered !== correctPin) { showToast('Incorrect password'); if(pwEl){pwEl.value='';pwEl.focus();} return; }
+  currentUser = user;
+  document.getElementById('loginScreen').style.display='none';
+  if(pwEl) pwEl.value='';
+  persistSession();
+  applyLogin();
+}
+
+function applyLogin() {
+  const av=document.getElementById('userAvatar');
+  av.style.background=currentUser.c.bg;
+  av.style.color=currentUser.c.fg;
+  av.textContent=initials(currentUser.name);
+  const badge = isAdmin() ? ' 🔑' : isHR() ? ' 👤' : '';
+  document.getElementById('userPillName').textContent=currentUser.name + badge;
+  const addRow = document.querySelector('.add-row');
+  if(addRow) addRow.style.display = canCreateAccounts() ? 'flex' : 'none';
+
+  // Reset notes to this user's own sections
+  currentNoteSection = null;
+
+  // HR sees only timesheet tab, no header action buttons
+  const allTabs = document.querySelectorAll('#mainTabs .tab');
+  const hrBtnsToHide = ['headerFindCapBtn','headerNewProjBtn','headerLegend','logThisWeekBtn'];
+  if(isHR()) {
+    allTabs.forEach(t=>{
+      const view = t.getAttribute('data-view');
+      t.style.display = view==='timesheet' ? '' : 'none';
+    });
+    hrBtnsToHide.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+    const tsTab = document.querySelector('[data-view="timesheet"]');
+    if(tsTab) switchTab('timesheet', tsTab);
+    document.getElementById('userMenuSettings').style.display='none';
+  } else {
+    allTabs.forEach(t=>t.style.display='');
+    hrBtnsToHide.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=''; });
+    document.getElementById('userMenuSettings').style.display='';
+    // Always land on Weekly Grid when logging in — never show previous user's view
+    const weeklyTab = document.querySelector('[data-view="weekly"]');
+    if(weeklyTab) switchTab('weekly', weeklyTab);
+    updateSummary();
+    updateLogThisWeekBtn();
+    updateInboxBadge();
+  }
+}
+
+function toggleUserMenu() {
+  const menu=document.getElementById('userMenu');
+  menu.style.display=menu.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  const pill=document.getElementById('userPill');
+  const menu=document.getElementById('userMenu');
+  if(menu && pill && !pill.contains(e.target) && !menu.contains(e.target)) menu.style.display='none';
+});
+
+// ── SCHEMA NORMALIZER ─────────────────────────
+// Handles both old format {id,alloc,pmId} and new {personId,allocation,creatorId}
+function normalizeProject(p) {
+  if(!p.members) p.members = [];
+  p.members = p.members.map(m => ({
+    personId:   m.personId   ?? m.id,
+    allocation: m.allocation ?? m.alloc ?? 0,
+    role:       m.role       ?? (m.pmId ? 'pm' : 'coordinator')
+  }));
+  if(!p.creatorId && p.pmId) p.creatorId = p.pmId;
+  if(!p.deliverables) p.deliverables = [];
+  return p;
+}
+
+function exportData() {
+  document.getElementById('userMenu').style.display='none';
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    team: team.map(p=>({id:p.id,name:p.name,title:p.title,dept:p.dept,ci:team.indexOf(p)})),
+    projects, overrides, notifications
+  };
+  const json = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(json).then(()=>{
+    showToast('✅ Data copied to clipboard — paste it to Claude!');
+  }).catch(()=>{
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    ta.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:80vw;height:60vh;z-index:9999;padding:12px;font-size:11px;font-family:monospace;border:2px solid var(--green);border-radius:8px;background:#fff';
+    document.body.appendChild(ta); ta.select();
+    const close = document.createElement('button');
+    close.textContent='✕ Close';
+    close.style.cssText='position:fixed;top:calc(50% - 30vh - 36px);left:50%;transform:translateX(-50%);z-index:9999;padding:8px 20px;background:var(--green);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600';
+    close.onclick=()=>{ document.body.removeChild(ta); document.body.removeChild(close); };
+    document.body.appendChild(close);
+    showToast('Select all and copy the text, then paste it to Claude');
+  });
+}
+
+function doLogout() {
+  document.getElementById('userMenu').style.display='none';
+  clearSession(); currentUser=null; loginSelectedId=null;
+  document.getElementById('loginSelect').value='';
+  // Reset password field and hide it
+  const pw=document.getElementById('loginPassword');
+  const wrap=document.getElementById('loginPwWrap');
+  if(pw) pw.value='';
+  if(wrap) wrap.style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  populateLoginSelect();
+}
+
+function openSettingsModal() {
+  document.getElementById('userMenu').style.display='none';
+  const adminMode = isAdmin();
+  document.getElementById('settingsSubtitle').textContent = adminMode ? 'Administrator — '+currentUser.name : 'Logged in as '+currentUser.name;
+  document.getElementById('adminTeamSection').style.display = adminMode ? 'block' : 'none';
+  document.getElementById('regularNameSection').style.display = adminMode ? 'none' : 'block';
+  document.getElementById('settingsName').value = currentUser.name;
+  document.getElementById('settingsCurrentPin').value='';
+  document.getElementById('settingsNewPin').value='';
+  document.getElementById('settingsConfirmPin').value='';
+  if(adminMode) {
+    document.getElementById('adminTeamList').innerHTML = team.map(p=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div class="avatar" style="background:${p.c.bg};color:${p.c.fg};width:26px;height:26px;font-size:10px;flex-shrink:0">${initials(p.name)}</div>
+        <input type="text" id="adminName_${p.id}" value="${p.name}" style="flex:1;min-width:0;padding:5px 8px;font-size:13px;font-weight:500;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
+        <select id="adminTitle_${p.id}" style="width:130px;padding:5px 8px;font-size:12px;flex-shrink:0">
+          ${TITLES.map(t=>`<option value="${t}"${p.title===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm btn-danger" onclick="adminRemoveMember(${p.id})" title="Remove" style="flex-shrink:0">✕</button>
+      </div>`).join('');
+  }
+  openOverlay('settingsModal');
+}
+
+function saveSettings() {
+  const currentPin = document.getElementById('settingsCurrentPin').value;
+  const newPin = document.getElementById('settingsNewPin').value;
+  const confirmPin = document.getElementById('settingsConfirmPin').value;
+  if(isAdmin()) {
+    team.forEach(p=>{
+      const nameInput = document.getElementById('adminName_'+p.id);
+      const titleSel = document.getElementById('adminTitle_'+p.id);
+      if(nameInput && nameInput.value.trim()) p.name = nameInput.value.trim();
+      if(titleSel) p.title = titleSel.value;
+      if(p.id === currentUser.id) currentUser.name = p.name;
+    });
+    team.forEach(p=>saveTeamMember(p));
+    populateLoginSelect();
+  } else {
+    const newName = document.getElementById('settingsName').value.trim();
+    if(!newName) { showToast('Name cannot be empty'); return; }
+    currentUser.name = newName;
+    saveTeamMember(currentUser);
+    saveNames();
+  }
+  if(currentPin||newPin||confirmPin) {
+    const correct = pins[currentUser.id]||'1234';
+    if(currentPin!==correct) { showToast('Current password is incorrect'); return; }
+    if(newPin.length<4) { showToast('New password must be at least 4 characters'); return; }
+    if(newPin!==confirmPin) { showToast('Passwords do not match'); return; }
+    pins[currentUser.id]=newPin; savePins();
+  }
+  applyLogin(); populateLoginSelect(); closeModal('settingsModal'); showToast('Settings saved ✓');
+}
+
+function adminRemoveMember(id) {
+  if(id===1){showToast('Cannot remove the admin account');return;}
+  const p = team.find(t=>t.id===id);
+  if(!p) return;
+  if(!confirm('Remove '+p.name+' from the team? This cannot be undone.')) return;
+  team = team.filter(t=>t.id!==id);
+  projects.forEach(proj=>{ proj.members = proj.members.filter(m=>m.personId!==id); saveProject(proj); });
   overrides.filter(o=>o.personId===id).forEach(o=>deleteOverrideFromDB(o.id));
   overrides = overrides.filter(o=>o.personId!==id);
   deleteTeamMemberFromDB(id);
@@ -1416,7 +2683,6 @@ let currentNoteSection = null;
 let nbSaveTimer = null;
 let lastFocusedNote = null;
 let nbUndoStack = [];
-let nbSavedRange = null; // saves cursor position before table picker opens
 const NB_UNDO_MAX = 20;
 const NOTE_DEFAULT_W = 380;
 
@@ -1666,41 +2932,24 @@ function createNoteEl(n, sectionId) {
     e.preventDefault();
     const startX=e.clientX, startY=e.clientY;
     const startL=parseInt(el.style.left)||0, startT=parseInt(el.style.top)||0;
-    // Bring to front among all notes
+    // Bring to front
     let maxZ=100;
     document.querySelectorAll('.nb-note').forEach(n=>{const z=parseInt(n.style.zIndex)||1;if(z>maxZ)maxZ=z;});
     el.style.zIndex=maxZ+1; el.style.boxShadow='0 8px 30px rgba(0,0,0,0.15)';
     function onMove(e) {
-      const canvas=document.getElementById('nbCanvas');
-      const maxLeft=canvas?canvas.offsetWidth-el.offsetWidth-4:9999;
-      let newL=Math.max(0,Math.min(maxLeft,startL+e.clientX-startX));
-      let newT=Math.max(0,startT+e.clientY-startY);
-      // Prevent overlapping with other notes
-      const gap=8;
-      document.querySelectorAll('.nb-note').forEach(other=>{
-        if(other===el) return;
-        const oL=parseInt(other.style.left)||0, oT=parseInt(other.style.top)||0;
-        const oR=oL+other.offsetWidth, oB=oT+other.offsetHeight;
-        const nR=newL+el.offsetWidth, nB=newT+el.offsetHeight;
-        // Check overlap
-        if(newL<oR+gap && nR>oL-gap && newT<oB+gap && nB>oT-gap) {
-          // Push away from whichever edge is closest
-          const overlapL=nR-(oL-gap), overlapR=(oR+gap)-newL;
-          const overlapT=nB-(oT-gap), overlapB=(oB+gap)-newT;
-          const minH=Math.min(overlapL,overlapR), minV=Math.min(overlapT,overlapB);
-          if(minH<minV) { if(overlapL<overlapR) newL=oL-el.offsetWidth-gap; else newL=oR+gap; }
-          else { if(overlapT<overlapB) newT=oT-el.offsetHeight-gap; else newT=oB+gap; }
-          newL=Math.max(0,Math.min(maxLeft,newL)); newT=Math.max(0,newT);
-        }
-      });
-      el.style.left=newL+'px'; el.style.top=newT+'px';
+      const canvas=document.getElementById('nbCanvas'); if(!canvas) return;
+      const canvasW=canvas.offsetWidth;
+      const newL=Math.max(NB_MARGIN_SIDE, Math.min(canvasW-el.offsetWidth-NB_MARGIN_SIDE, startL+e.clientX-startX));
+      const newT=Math.max(NB_MARGIN_TOP, startT+e.clientY-startY);
+      el.style.left=newL+'px';
+      el.style.top=newT+'px';
       updateCanvasHeight();
     }
     function onUp() {
-      // Keep z-index so note stays on top after drag
       el.style.boxShadow='var(--shadow)';
       document.removeEventListener('mousemove',onMove);
       document.removeEventListener('mouseup',onUp);
+      nbResolveOverlaps(el);
       saveAllNotes(sectionId);
     }
     document.addEventListener('mousemove',onMove);
@@ -1728,14 +2977,21 @@ function createNoteEl(n, sectionId) {
     nbSaveTimer=setTimeout(()=>saveAllNotes(sectionId),800);
   });
 
-  // Track width resize — clamp to canvas edge
+  // Track width resize — stop at page margin AND neighbouring notes
   const ro=new ResizeObserver(()=>{
-    const canvas=document.getElementById('nbCanvas');
-    if(canvas){
-      const noteLeft=parseInt(el.style.left)||0;
-      const maxW=canvas.offsetWidth-noteLeft-16;
-      if(el.offsetWidth>maxW) el.style.width=maxW+'px';
-    }
+    const canvas=document.getElementById('nbCanvas'); if(!canvas) return;
+    const noteLeft=parseInt(el.style.left)||0;
+    let maxW=canvas.offsetWidth - noteLeft - NB_MARGIN_SIDE;
+    // Also stop at left edge of any note to the right
+    canvas.querySelectorAll('.nb-note').forEach(other=>{
+      if(other===el) return;
+      const ol=parseInt(other.style.left)||0;
+      if(ol > noteLeft) {
+        const gap=ol - noteLeft - NB_NOTE_GAP;
+        if(gap < maxW) maxW=gap;
+      }
+    });
+    if(maxW>80 && el.offsetWidth>maxW) el.style.width=maxW+'px';
     clearTimeout(nbSaveTimer);
     nbSaveTimer=setTimeout(()=>saveAllNotes(sectionId),500);
   });
@@ -1745,11 +3001,84 @@ function createNoteEl(n, sectionId) {
   el.addEventListener('focusin',()=>{
     let maxZ=10;
     document.querySelectorAll('.nb-note').forEach(n=>{const z=parseInt(n.style.zIndex)||10;if(z>maxZ)maxZ=z;});
-    el.style.zIndex=String(maxZ+1);
-    el.style.borderColor='var(--green)';el.style.boxShadow='0 0 0 2px rgba(45,143,94,0.12),var(--shadow)';});
+    el.style.zIndex=String(maxZ+1);el.style.borderColor='var(--green)';el.style.boxShadow='0 0 0 2px rgba(45,143,94,0.12),var(--shadow)';});
   el.addEventListener('focusout',()=>{el.style.borderColor='var(--border)';el.style.boxShadow='var(--shadow)';});
 
   return el;
+}
+
+// Margin constants
+const NB_MARGIN_TOP  = 10;
+const NB_MARGIN_SIDE = 20;
+const NB_NOTE_GAP    = 10;
+
+function nbResolveOverlaps(movedEl) {
+  const canvas=document.getElementById('nbCanvas'); if(!canvas) return;
+  const notes=[...canvas.querySelectorAll('.nb-note')];
+  if(notes.length<2) { updateCanvasHeight(); return; }
+  const canvasW=canvas.offsetWidth;
+  const mover=movedEl||notes[notes.length-1];
+
+  let changed=true, iters=0;
+  while(changed && iters++<40) {
+    changed=false;
+    const ml=parseInt(mover.style.left)||0, mt=parseInt(mover.style.top)||0;
+    const mw=mover.offsetWidth, mh=mover.offsetHeight;
+
+    for(let i=0;i<notes.length;i++) {
+      const other=notes[i];
+      if(other===mover) continue;
+      const ol=parseInt(other.style.left)||0, ot=parseInt(other.style.top)||0;
+      const ow=other.offsetWidth, oh=other.offsetHeight;
+
+      // Calculate actual overlap amounts
+      const ox=Math.min(ml+mw, ol+ow)+NB_NOTE_GAP - Math.max(ml, ol);
+      const oy=Math.min(mt+mh, ot+oh)+NB_NOTE_GAP - Math.max(mt, ot);
+      if(ox<=0 || oy<=0) continue; // no overlap
+
+      // Determine where mover centre is relative to other's centre
+      const mcx=ml+mw/2, mcy=mt+mh/2;
+      const ocx=ol+ow/2, ocy=ot+oh/2;
+      const dx=mcx-ocx, dy=mcy-ocy; // positive = mover is to the right/below
+
+      // Push in the direction the user placed it (dx/dy tells us)
+      if(Math.abs(dx) >= Math.abs(dy)) {
+        // Horizontal relationship — push left or right
+        if(dx>=0) {
+          // mover is to the right of other → push mover further right
+          const target=ol+ow+NB_NOTE_GAP;
+          if(target+mw <= canvasW-NB_MARGIN_SIDE) { mover.style.left=target+'px'; changed=true; }
+          else { mover.style.top=(ot+oh+NB_NOTE_GAP)+'px'; changed=true; } // no room right → push down
+        } else {
+          // mover is to the left of other → push mover further left
+          const target=ol-mw-NB_NOTE_GAP;
+          if(target >= NB_MARGIN_SIDE) { mover.style.left=target+'px'; changed=true; }
+          else { mover.style.top=(ot+oh+NB_NOTE_GAP)+'px'; changed=true; }
+        }
+      } else {
+        // Vertical relationship — push up or down
+        if(dy>=0) {
+          // mover is below other → push down
+          mover.style.top=(ot+oh+NB_NOTE_GAP)+'px'; changed=true;
+        } else {
+          // mover is above other → push up
+          const target=ot-mh-NB_NOTE_GAP;
+          mover.style.top=Math.max(NB_MARGIN_TOP, target)+'px'; changed=true;
+        }
+      }
+      break; // re-evaluate after each move
+    }
+  }
+
+  // Final clamp to page margins
+  let fl=parseInt(mover.style.left)||0;
+  let ft=parseInt(mover.style.top)||0;
+  fl=Math.max(NB_MARGIN_SIDE, Math.min(fl, canvasW-mover.offsetWidth-NB_MARGIN_SIDE));
+  ft=Math.max(NB_MARGIN_TOP, ft);
+  mover.style.left=fl+'px';
+  mover.style.top=ft+'px';
+
+  updateCanvasHeight();
 }
 
 function updateCanvasHeight() {
@@ -1790,25 +3119,19 @@ function nbAddNote() {
   const existing=canvas.querySelectorAll('.nb-note');
   let x=20, y=20;
   if(existing.length) {
-    // Find a position that doesn't overlap any existing note
-    const gap=12;
-    const tryPositions=()=>{
-      for(let row=0;row<10;row++){
-        for(let col=0;col<3;col++){
-          const tx=20+col*(NOTE_DEFAULT_W+gap), ty=20+row*(140+gap);
-          const overlaps=[...existing].some(n=>{
-            const nl=parseInt(n.style.left)||0,nt=parseInt(n.style.top)||0;
-            return tx<nl+n.offsetWidth+gap && tx+NOTE_DEFAULT_W>nl-gap && ty<nt+n.offsetHeight+gap && ty+140>nt-gap;
-          });
-          if(!overlaps){x=tx;y=ty;return;}
-        }
-      }
-      // fallback: stack below everything
+    const last=existing[existing.length-1];
+    const lx=parseInt(last.style.left)||20;
+    const lw=last.offsetWidth||NOTE_DEFAULT_W;
+    const canvasW=canvas.offsetWidth;
+    if(lx+lw+NOTE_DEFAULT_W+30 < canvasW) {
+      // Place to the right
+      x=lx+lw+20; y=parseInt(last.style.top)||20;
+    } else {
+      // Place below
       let maxBottom=0;
       existing.forEach(n=>{const b=(parseInt(n.style.top)||0)+n.offsetHeight; if(b>maxBottom)maxBottom=b;});
-      x=20; y=maxBottom+gap;
-    };
-    tryPositions();
+      x=20; y=maxBottom+20;
+    }
   }
   const sections=loadNotes();
   const s=sections.find(sec=>sec.id===currentNoteSection); if(!s) return;
@@ -1974,8 +3297,8 @@ function placeCursorEnd(el){try{const r=document.createRange(),s=window.getSelec
 function placeCursorStart(el){try{const r=document.createRange(),s=window.getSelection();r.setStart(el,0);r.collapse(true);s.removeAllRanges();s.addRange(r);}catch(e){}}
 
 
-// ── Stickies ──────────────────────────────────
 
+// ── Stickies ──────────────────────────────────
 
 function renderStickies(s) {
   const el=document.getElementById('nbStickies'); if(!el) return;
