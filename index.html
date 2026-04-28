@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Team Workload Tracker v49</title>
+<title>Team Workload Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -637,40 +637,45 @@ select option{background:#fff}
     </div>
   </div>
 
-  <div id="view-notes" class="hidden" style="overflow:hidden">
-    <!-- Compact toolbar -->
-    <div style="padding:6px 36px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:3px;flex-wrap:wrap;position:sticky;top:0;z-index:10;margin:-26px -36px 0 -36px;box-sizing:content-box;">
-      <button title="Undo (Ctrl+Z)" onclick="nbUndo()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">↩</button>
-      <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
-      <button title="Bold" onmousedown="event.preventDefault();document.execCommand('bold')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text)">B</button>
-      <button title="Italic" onmousedown="event.preventDefault();document.execCommand('italic')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;font-style:italic;color:var(--text)">I</button>
-      <button title="Underline" onmousedown="event.preventDefault();document.execCommand('underline')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;text-decoration:underline;color:var(--text)">U</button>
-      <button title="Strikethrough" onmousedown="event.preventDefault();document.execCommand('strikeThrough')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;text-decoration:line-through;color:var(--text)">S</button>
-      <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
-      <button title="Yellow" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#FFF9C4')" style="background:#FFF9C4;border:1px solid #d4b800;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
-      <button title="Green" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#C8F7C5')" style="background:#C8F7C5;border:1px solid #5cb85c;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
-      <button title="Blue" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#C5E8F7')" style="background:#C5E8F7;border:1px solid #5bc0de;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
-      <button title="Pink" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#FFC5C5')" style="background:#FFC5C5;border:1px solid #d9534f;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
-      <button title="Clear highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'inherit')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:10px;color:var(--muted)">✕</button>
-      <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
-      <button title="Bullet list" onclick="nbInsertBullet()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">• ≡</button>
-      <button title="To-do" onclick="nbInsertTodo()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">☑</button>
-      <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
-      <select id="nbFontSizeSel" onchange="nbFontSize(this.value)" title="Font size" style="padding:3px 5px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;width:52px">
-        <option value="11">11</option>
-        <option value="12">12</option>
-        <option value="14" selected>14</option>
-        <option value="16">16</option>
-        <option value="18">18</option>
-        <option value="20">20</option>
-        <option value="24">24</option>
-        <option value="28">28</option>
-        <option value="32">32</option>
-      </select>
-      <div style="flex:1"></div>
-      <button class="btn btn-accent" onclick="nbAddNote()" style="font-size:12px;padding:4px 12px">＋ Add Note</button>
+  <div id="view-notes" class="hidden">
+    <!-- Compact toolbar — starts at sidebar width (200px) to align with canvas content -->
+    <div style="background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;margin:-26px -36px 0 -36px;position:relative;z-index:1">
+      <!-- Spacer matching sidebar width so buttons align with section title -->
+      <div style="width:200px;flex-shrink:0;border-right:1px solid transparent"></div>
+      <!-- Toolbar buttons start here, aligned with canvas -->
+      <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;padding:6px 14px 6px 14px;flex:1">
+        <!-- Group 1: Bold, Italic, Underline, Strikethrough, Font size -->
+        <button title="Bold" onmousedown="event.preventDefault();document.execCommand('bold')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text)">B</button>
+        <button title="Italic" onmousedown="event.preventDefault();document.execCommand('italic')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;font-style:italic;color:var(--text)">I</button>
+        <button title="Underline" onmousedown="event.preventDefault();document.execCommand('underline')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;text-decoration:underline;color:var(--text)">U</button>
+        <button title="Strikethrough" onmousedown="event.preventDefault();document.execCommand('strikeThrough')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:13px;text-decoration:line-through;color:var(--text)">S</button>
+        <select id="nbFontSizeSel" onchange="nbFontSize(this.value)" title="Font size" style="padding:3px 5px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;width:52px">
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="14" selected>14</option>
+          <option value="16">16</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+          <option value="28">28</option>
+          <option value="32">32</option>
+        </select>
+        <!-- Divider -->
+        <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
+        <!-- Group 2: Highlighters -->
+        <button title="Yellow highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#FFF9C4')" style="background:#FFF9C4;border:1px solid #d4b800;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
+        <button title="Green highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#C8F7C5')" style="background:#C8F7C5;border:1px solid #5cb85c;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
+        <button title="Blue highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#C5E8F7')" style="background:#C5E8F7;border:1px solid #5bc0de;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
+        <button title="Pink highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'#FFC5C5')" style="background:#FFC5C5;border:1px solid #d9534f;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:12px;font-weight:700">A</button>
+        <button title="Clear highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'inherit')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:10px;color:var(--muted)">✕</button>
+        <!-- Divider -->
+        <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
+        <!-- Group 3: Bullet options -->
+        <button title="Bullet list" onclick="nbInsertBullet()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">• ≡</button>
+        <button title="To-do list" onclick="nbInsertTodo()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">☑</button>
+      </div>
     </div>
-    <div style="display:flex;height:calc(100vh - 108px);margin:0 -36px;margin-top:0">
+    <div style="display:flex;height:calc(100vh - 170px);margin:0 -36px">
       <!-- Sidebar -->
       <div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);padding:14px 12px 14px 14px;overflow-y:auto;background:var(--surface2)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -684,11 +689,18 @@ select option{background:#fff}
       </div>
       <!-- Free-form canvas area -->
       <div style="flex:1;overflow:auto;background:var(--bg);position:relative">
-        <div id="nbSectionHeader" style="display:none;padding:20px 36px 0">
+        <div id="nbEmpty" style="text-align:center;padding:40px 40px;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:12px">📝</div>
+          <div style="font-family:'Fraunces',serif;font-size:17px;margin-bottom:6px">Select a section</div>
+          <div style="font-size:13px">Or create a new one</div>
+        </div>
+    <div id="nbSectionHeader" style="display:none;padding:20px 36px 0">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div id="nbSectionTitle" contenteditable="false" spellcheck="false" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;outline:none;border-radius:6px;padding:2px 6px;margin-left:-6px;cursor:default" onblur="saveSecTitle(this.innerText.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"></div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div id="nbSectionTitle" contenteditable="false" spellcheck="false" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;outline:none;border-radius:6px;padding:2px 6px;margin-left:-6px;cursor:default" onblur="saveSecTitle(this.innerText.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"></div>
+              <button class="btn btn-accent" onclick="nbAddNote()" style="font-size:12px;padding:4px 12px;flex-shrink:0">＋ Add Note</button>
+            </div>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm" onclick="addSticky(currentNoteSection)" style="font-size:11px">📌 Sticky</button>
               <button class="btn btn-sm" onclick="deleteNoteSection(currentNoteSection)" style="font-size:11px;color:var(--muted)">Delete Section</button>
             </div>
           </div>
@@ -697,11 +709,7 @@ select option{background:#fff}
         </div>
         <!-- Canvas: notes are absolutely positioned here -->
         <div id="nbCanvas" style="position:relative;min-height:700px;padding:20px 36px;overflow:visible"></div>
-        <div id="nbEmpty" style="text-align:center;padding:100px 40px;color:var(--muted)">
-          <div style="font-size:40px;margin-bottom:12px">📝</div>
-          <div style="font-family:'Fraunces',serif;font-size:17px;margin-bottom:6px">Select a section</div>
-          <div style="font-size:13px">Or create a new one</div>
-        </div>
+        <!-- Canvas: notes are absolutely positioned here -->
       </div>
     </div>
   </div>
@@ -749,7 +757,6 @@ select option{background:#fff}
       <div id="tsHRList"></div>
     </div>
   </div>
-</div>
 </div>
 
 <!-- ADD NOTE CARD MODAL -->
