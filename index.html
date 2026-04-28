@@ -708,7 +708,7 @@ select option{background:#fff}
           <hr style="border:none;border-top:1px solid var(--border);margin-bottom:0">
         </div>
         <!-- Canvas: notes are absolutely positioned here -->
-        <div id="nbCanvas" style="position:relative;min-height:700px;padding:20px 36px;overflow:visible"></div>
+        <div id="nbCanvas" style="position:relative;min-height:700px;padding:20px 0 20px 0;overflow:visible"></div>
         <!-- Canvas: notes are absolutely positioned here -->
       </div>
     </div>
@@ -2690,7 +2690,13 @@ let nbSaveTimer = null;
 let lastFocusedNote = null;
 let nbUndoStack = [];
 const NB_UNDO_MAX = 20;
-const NOTE_DEFAULT_W = 380;
+const NOTE_DEFAULT_W = 380; // fallback; runtime width computed in nbNoteWidth()
+function nbNoteWidth() {
+  const canvas = document.getElementById('nbCanvas');
+  if (!canvas) return NOTE_DEFAULT_W;
+  // 36px left margin + 36px right margin + 2 gaps of 10px = 92px reserved
+  return Math.max(200, Math.floor((canvas.offsetWidth - 92) / 3));
+}
 
 function notesKey() { return currentUser ? 'wt_notes_'+currentUser.id : null; }
 function loadNotes() {
@@ -2722,7 +2728,7 @@ function saveNoteSection() {
   if(!title){showToast('Please enter a section title');return;}
   const sections=loadNotes();
   const parentId=document.getElementById('noteSectionParent')?.value||null;
-  const newSec={id:'ns'+Date.now(),title,parentId,notes:[{id:'n'+Date.now(),content:'',x:20,y:20,w:NOTE_DEFAULT_W,createdAt:Date.now()}],stickies:[]};
+  const newSec={id:'ns'+Date.now(),title,parentId,notes:[{id:'n'+Date.now(),content:'',x:36,y:20,w:nbNoteWidth(),createdAt:Date.now()}],stickies:[]};
   sections.push(newSec);
   saveNotes(sections);
   currentNoteSection=newSec.id;
@@ -2888,7 +2894,7 @@ function selectNoteSection(sectionId) {
 function renderNoteEditor(sectionId) {
   const sections=loadNotes();
   const s=sections.find(x=>x.id===sectionId); if(!s) return;
-  if(!s.notes||!s.notes.length) s.notes=[{id:'n'+Date.now(),content:'',x:20,y:20,w:NOTE_DEFAULT_W,createdAt:Date.now()}];
+  if(!s.notes||!s.notes.length) s.notes=[{id:'n'+Date.now(),content:'',x:36,y:20,w:nbNoteWidth(),createdAt:Date.now()}];
 
   document.getElementById('nbSectionHeader').style.display='block';
   document.getElementById('nbSectionTitle').textContent=s.title;
@@ -3014,8 +3020,8 @@ function createNoteEl(n, sectionId) {
 }
 
 // Margin constants
-const NB_MARGIN_TOP  = 10;
-const NB_MARGIN_SIDE = 20;
+const NB_MARGIN_TOP  = 20; // fixed top border — matches default note placement
+const NB_MARGIN_SIDE = 36; // fixed left/right border for the notes canvas
 const NB_NOTE_GAP    = 10;
 
 function nbResolveOverlaps(movedEl) {
@@ -3120,28 +3126,31 @@ function saveAllNotes(sectionId) {
 function nbAddNote() {
   if(!currentNoteSection){showToast('Select a section first');return;}
   nbPushUndo();
-  // Find a smart position — to the right of last note or below
   const canvas=document.getElementById('nbCanvas');
   const existing=canvas.querySelectorAll('.nb-note');
-  let x=20, y=20;
+  const nw=nbNoteWidth();  // one-third of usable canvas width
+  const GAP=10;            // 10px between notes
+  const MARGIN=36; // aligns with section header padding
+  let x=MARGIN, y=20;
   if(existing.length) {
     const last=existing[existing.length-1];
-    const lx=parseInt(last.style.left)||20;
-    const lw=last.offsetWidth||NOTE_DEFAULT_W;
+    const lx=parseInt(last.style.left)||MARGIN;
+    const lw=last.offsetWidth||nw;
     const canvasW=canvas.offsetWidth;
-    if(lx+lw+NOTE_DEFAULT_W+30 < canvasW) {
-      // Place to the right
-      x=lx+lw+20; y=parseInt(last.style.top)||20;
+    // Fits to the right if next note ends before right margin (36px from edge)
+    if(lx+lw+GAP+nw <= canvasW-MARGIN) {
+      // Place to the right with 10px gap
+      x=lx+lw+GAP; y=parseInt(last.style.top)||20;
     } else {
-      // Place below
+      // Wrap to next row below all current notes
       let maxBottom=0;
       existing.forEach(n=>{const b=(parseInt(n.style.top)||0)+n.offsetHeight; if(b>maxBottom)maxBottom=b;});
-      x=20; y=maxBottom+20;
+      x=MARGIN; y=maxBottom+NB_MARGIN_TOP;
     }
   }
   const sections=loadNotes();
   const s=sections.find(sec=>sec.id===currentNoteSection); if(!s) return;
-  const newNote={id:'n'+Date.now(),content:'',x,y,w:NOTE_DEFAULT_W,createdAt:Date.now()};
+  const newNote={id:'n'+Date.now(),content:'',x,y,w:nw,createdAt:Date.now()};
   if(!s.notes) s.notes=[];
   s.notes.push(newNote);
   saveNotes(sections);
