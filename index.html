@@ -372,12 +372,13 @@ select option{background:#fff}
 
 /* Notes canvas */
 .nb-note-content:empty:before{content:attr(data-placeholder);color:var(--muted);pointer-events:none;font-style:italic}
-.nb-note-content ul{padding-left:22px;margin:4px 0}
-.nb-note-content li{margin:2px 0;line-height:1.8}
-/* Todo list — same as bullets, checkbox via CSS */
-.nb-todo-list{list-style:none;padding-left:6px;margin:4px 0}
-.nb-todo-list li{padding-left:26px;position:relative;margin:2px 0;line-height:1.8;cursor:text}
-.nb-todo-list li::before{content:'☐';position:absolute;left:0;top:0;font-size:14px;color:#888;line-height:1.8;width:22px;text-align:center;cursor:pointer;user-select:none}
+.nb-note-content ul,.nb-note-content ol{padding-left:18px;margin:3px 0}
+.nb-note-content ul:not(.nb-todo-list){list-style-type:square}
+.nb-note-content ol{list-style-type:decimal}
+.nb-note-content li{margin:1px 0;line-height:1.8}
+.nb-todo-list{list-style:none!important;padding-left:0;margin:3px 0}
+.nb-todo-list li{padding-left:18px;position:relative;margin:1px 0;line-height:1.8;cursor:text}
+.nb-todo-list li::before{content:'☐';position:absolute;left:0;top:0;font-size:13px;color:#888;line-height:1.8;width:16px;cursor:pointer;user-select:none}
 .nb-todo-list li.nb-done{text-decoration:line-through;color:var(--muted)}
 .nb-todo-list li.nb-done::before{content:'☑';color:#2d8f5e}
 .nb-note-content th{background:var(--surface2);font-weight:600}
@@ -670,9 +671,10 @@ select option{background:#fff}
         <button title="Clear highlight" onmousedown="event.preventDefault();document.execCommand('hiliteColor',false,'inherit')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:10px;color:var(--muted)">✕</button>
         <!-- Divider -->
         <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
-        <!-- Group 3: Bullet options -->
-        <button title="Bullet list" onclick="nbInsertBullet()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">• ≡</button>
-        <button title="To-do list" onclick="nbInsertTodo()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">☑</button>
+        <!-- Group 3: Bullet options — order: numbers, bullets, to-do -->
+        <button title="Numbered list" onmousedown="event.preventDefault();nbInsertNumbered()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">1. ≡</button>
+        <button title="Bullet list (square)" onmousedown="event.preventDefault();nbInsertBullet()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">■ ≡</button>
+        <button title="To-do list" onmousedown="event.preventDefault();nbInsertTodo()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--text)">☑</button>
       </div>
     </div>
     <div style="display:flex;height:calc(100vh - 170px);margin:0 -36px">
@@ -2984,10 +2986,86 @@ function createNoteEl(n, sectionId) {
       }
     }
   });
+  // Tab key → indent/dedent list items (24px per level ≈ 0.64cm)
+  content.addEventListener('keydown', function(e) {
+
+    // ── Space: auto-convert "1. " at line start → ordered list ────
+    if (e.key === ' ') {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        const node = range.startContainer;
+        if (node.nodeType === 3 && !node.parentElement.closest('li')) {
+          const before = node.textContent.slice(0, range.startOffset);
+          if (/^\d+\.$/.test(before.trim())) {
+            e.preventDefault();
+            node.textContent = node.textContent.slice(range.startOffset);
+            nbCreateListAtCursor('ol', null);
+            clearTimeout(nbSaveTimer);
+            nbSaveTimer = setTimeout(() => saveAllNotes(sectionId), 400);
+            return;
+          }
+        }
+      }
+    }
+
+    // ── Enter: exit list when current <li> is empty ────────────────
+    if (e.key === 'Enter') {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const anchor = sel.anchorNode;
+      const li = (anchor.nodeType === 3 ? anchor.parentElement : anchor).closest('li');
+      if (!li) return;
+      // Only intercept empty li
+      if ((li.innerText || li.textContent || '').trim() !== '') return;
+      e.preventDefault();
+      const list     = li.parentElement;
+      const listNext = list.nextSibling;
+      const listPar  = list.parentNode;
+      list.removeChild(li);
+      // Insert a plain paragraph to resume normal typing
+      const p = document.createElement('p');
+      p.innerHTML = '<br>';
+      if (list.children.length === 0) {
+        listPar.replaceChild(p, list);
+      } else {
+        listPar.insertBefore(p, listNext);
+      }
+      // Move cursor into new paragraph
+      const r2 = document.createRange();
+      r2.setStart(p, 0); r2.collapse(true);
+      sel.removeAllRanges(); sel.addRange(r2);
+      clearTimeout(nbSaveTimer);
+      nbSaveTimer = setTimeout(() => saveAllNotes(sectionId), 400);
+      return;
+    }
+
+    // ── Tab: indent / dedent list items (24px ≈ 0.64 cm per level) ─
+    if (e.key === 'Tab') {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const anchor = sel.anchorNode;
+      const li = (anchor.nodeType === 3 ? anchor.parentElement : anchor).closest('li');
+      if (!li) return;
+      e.preventDefault();
+      const cur  = parseInt(li.dataset.indent || '0');
+      const next = e.shiftKey ? Math.max(0, cur - 1) : Math.min(6, cur + 1);
+      li.dataset.indent  = next;
+      li.style.marginLeft = next > 0 ? (next * 24) + 'px' : '';
+      clearTimeout(nbSaveTimer);
+      nbSaveTimer = setTimeout(() => saveAllNotes(sectionId), 400);
+    }
+
+  });
+
   content.addEventListener('input',()=>{
     clearTimeout(nbSaveTimer);
     nbSaveTimer=setTimeout(()=>saveAllNotes(sectionId),800);
   });
+  // Track the last selection so toolbar buttons can restore it after focus
+  content.addEventListener('keyup', () => nbSaveLastRange());
+  content.addEventListener('mouseup', () => nbSaveLastRange());
+  content.addEventListener('focus', () => nbSaveLastRange());
 
   // Track width resize — stop at page margin AND neighbouring notes
   const ro=new ResizeObserver(()=>{
@@ -3251,62 +3329,281 @@ function nbFontSize(size) {
   if(sizeSel) sizeSel.value=size;
 }
 
-function nbInsertBullet() {
-  const note = nbGetNote(); if(!note) return;
-  note.focus();
-  // Ensure selection is within this note only
-  const sel=window.getSelection();
-  if(sel&&sel.rangeCount>0) {
-    const range=sel.getRangeAt(0);
-    // If no text selected, just insert at cursor
-    document.execCommand('insertUnorderedList');
-  } else {
-    document.execCommand('insertUnorderedList');
-  }
-  clearTimeout(nbSaveTimer);
-  nbSaveTimer=setTimeout(()=>saveAllNotes(currentNoteSection),400);
+
+// ── Split a single <li> out of its <ul> into a new <ul> with a given class ──
+// ══════════════════════════════════════════════════════════════════════════
+//  NOTES LIST ENGINE — OneNote-style bullet / numbered / todo management
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * nbGetCursorLi()
+ * Returns the single <li> the cursor is inside, or null.
+ */
+function nbGetCursorLi() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  let node = sel.anchorNode;
+  if (node && node.nodeType === 3) node = node.parentElement;
+  return node ? node.closest('li') : null;
 }
 
-// ── Helper: get or auto-focus the active note ──────────────────
-function nbGetNote() {
-  if(!lastFocusedNote) {
-    const first=document.querySelector('.nb-note-content');
-    if(!first){showToast('Add a note first');return null;}
-    first.focus(); lastFocusedNote=first;
+/**
+ * nbGetSelectedLis()
+ * Returns ALL <li> elements touched by the current selection (1..n).
+ * If the selection is collapsed, returns just the li at cursor (or []).
+ */
+function nbGetSelectedLis() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return [];
+  const range = sel.getRangeAt(0);
+
+  // Find the note-content ancestor
+  let ancestor = range.commonAncestorContainer;
+  if (ancestor.nodeType === 3) ancestor = ancestor.parentElement;
+  const note = ancestor ? ancestor.closest('.nb-note-content') : null;
+  if (!note) return [];
+
+  if (sel.isCollapsed) {
+    const li = ancestor.closest('li');
+    return li ? [li] : [];
   }
-  return lastFocusedNote;
+
+  return [...note.querySelectorAll('li')].filter(li => range.intersectsNode(li));
 }
 
-// ── Todo: exact mirror of bullets + CSS checkbox ──────────────
-function nbInsertTodo() {
-  const note = nbGetNote(); if(!note) return;
+/**
+ * nbCreateListAtCursor(tagName, listClass)
+ * Wraps the current block (paragraph / div / br-line) in a new list.
+ * NEVER merges with adjacent lists. Always isolated.
+ */
+function nbCreateListAtCursor(tagName, listClass) {
+  // Work from lastFocusedNote — toolbar buttons cause blur so window.getSelection
+  // may point somewhere wrong. We reconstruct from the focused note directly.
+  const note = lastFocusedNote || document.querySelector('.nb-note-content');
+  if (!note) return;
+
+  // Re-focus to restore selection
   note.focus();
 
-  // Snapshot all existing ULs before the command
-  const before = new Set([...note.querySelectorAll('ul')].map(u=>u));
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) {
+    // No selection at all — append to end of note
+    const li = document.createElement('li');
+    li.innerHTML = '<br>';
+    const list = document.createElement(tagName);
+    if (listClass) list.classList.add(listClass);
+    list.appendChild(li);
+    note.appendChild(list);
+    const r = document.createRange();
+    r.setStart(li, 0); r.collapse(true);
+    sel && sel.removeAllRanges && sel.addRange(r);
+    return;
+  }
 
-  // If text is selected, insertUnorderedList wraps only that selection
-  // If nothing selected, it creates a new list at cursor
-  document.execCommand('insertUnorderedList');
+  const range = sel.getRangeAt(0);
+  let node = range.startContainer;
+  if (node.nodeType === 3) node = node.parentElement;
 
-  // Find the UL that was just created or activated (not in before set)
-  let ul = null;
-  note.querySelectorAll('ul').forEach(u=>{ if(!before.has(u)) ul=u; });
+  // If node is not inside this note, cursor is wrong — append to end
+  if (!note.contains(node)) {
+    const li = document.createElement('li');
+    li.innerHTML = '<br>';
+    const list = document.createElement(tagName);
+    if (listClass) list.classList.add(listClass);
+    list.appendChild(li);
+    note.appendChild(list);
+    const r = document.createRange();
+    r.setStart(li, 0); r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+    return;
+  }
 
-  // Fallback: find the UL containing the cursor
-  if(!ul) {
-    const sel=window.getSelection();
-    if(sel&&sel.rangeCount>0){
-      let node=sel.getRangeAt(0).commonAncestorContainer;
-      if(node.nodeType===3) node=node.parentNode;
-      ul=node.closest('ul')||node.querySelector('ul');
+  // Walk up to the direct child of note
+  let block = node;
+  while (block && block.parentNode !== note) block = block.parentNode;
+  if (!block || block === note) {
+    block = document.createElement('p');
+    block.innerHTML = '<br>';
+    note.appendChild(block);
+  }
+
+  // Already a list — toggle class
+  if (block.tagName === 'UL' || block.tagName === 'OL') {
+    if (listClass === 'nb-todo-list') {
+      block.classList.toggle('nb-todo-list');
+    } else {
+      block.classList.remove('nb-todo-list');
     }
+    // Place cursor in first li
+    const firstLi = block.querySelector('li');
+    if (firstLi) {
+      const r = document.createRange();
+      r.selectNodeContents(firstLi); r.collapse(false);
+      sel.removeAllRanges(); sel.addRange(r);
+    }
+    return;
   }
 
-  if(ul) ul.classList.add('nb-todo-list');
-  clearTimeout(nbSaveTimer);
-  nbSaveTimer=setTimeout(()=>saveAllNotes(currentNoteSection),400);
+  // Wrap block in new list
+  const text = block.innerHTML || '';
+  const list = document.createElement(tagName);
+  if (listClass) list.classList.add(listClass);
+  const li = document.createElement('li');
+  // If block was just a <br>, start empty
+  li.innerHTML = (text === '<br>' || text === '') ? '<br>' : text;
+  list.appendChild(li);
+  note.replaceChild(list, block);
+
+  // Place cursor at end of li content
+  const r2 = document.createRange();
+  r2.selectNodeContents(li);
+  r2.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(r2);
 }
+
+/**
+ * nbSetListType(lis, newTag, newClass)
+ *
+ * Core conversion engine. Takes an array of <li> elements and converts
+ * them to the target type (ul/ol, with/without nb-todo-list class).
+ *
+ * For each parent list:
+ *   - Items NOT in `lis` stay in a list of the ORIGINAL type (split if needed)
+ *   - Items IN `lis` are moved into a new list of the TARGET type
+ *
+ * This is the only function that mutates list DOM. All three toolbar
+ * buttons call it exclusively.
+ */
+function nbSetListType(lis, newTag, newClass) {
+  if (!lis || !lis.length) return;
+
+  // Group selected lis by their parent list
+  const byParent = new Map();
+  lis.forEach(li => {
+    const parent = li.parentElement;
+    if (!parent || (parent.tagName !== 'UL' && parent.tagName !== 'OL')) return;
+    if (!byParent.has(parent)) byParent.set(parent, []);
+    byParent.get(parent).push(li);
+  });
+
+  byParent.forEach((selectedLis, origList) => {
+    const selectedSet = new Set(selectedLis);
+    const allItems    = [...origList.children];
+    const origTag     = origList.tagName;       // 'UL' or 'OL'
+    const origClass   = origList.className;      // e.g. 'nb-todo-list' or ''
+    const container   = origList.parentNode;
+
+    // Build runs: sequences of consecutive selected/unselected items
+    const runs = [];
+    allItems.forEach(item => {
+      const sel = selectedSet.has(item);
+      const last = runs[runs.length - 1];
+      if (last && last.sel === sel) { last.items.push(item); }
+      else { runs.push({ sel, items: [item] }); }
+    });
+
+    // Replace origList with the sequence of split lists
+    runs.forEach(run => {
+      const tag   = run.sel ? newTag   : origTag;
+      const klass = run.sel ? newClass : origClass;
+      const newList = document.createElement(tag);
+      if (klass) newList.className = klass;
+      run.items.forEach(item => {
+        // Strip nb-done when converting away from todo
+        if (!run.sel || newClass !== 'nb-todo-list') {
+          item.classList.remove('nb-done');
+        }
+        newList.appendChild(item);
+      });
+      container.insertBefore(newList, origList);
+    });
+
+    container.removeChild(origList);
+  });
+}
+
+// ── Public toolbar actions ────────────────────────────────────────
+
+// Persist the last cursor range so toolbar buttons can restore it after re-focus
+let _lastRange = null;
+function nbSaveLastRange() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    try { _lastRange = sel.getRangeAt(0).cloneRange(); } catch(e) {}
+  }
+}
+function nbRestoreLastRange() {
+  if (!_lastRange) return false;
+  try {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(_lastRange.cloneRange());
+    return true;
+  } catch(e) { return false; }
+}
+
+function nbGetNote() {
+  // Return the currently focused note content div.
+  // If none focused yet, focus the first available one.
+  if (lastFocusedNote && document.contains(lastFocusedNote)) {
+    lastFocusedNote.focus();
+    nbRestoreLastRange();
+    return lastFocusedNote;
+  }
+  const first = document.querySelector('.nb-note-content');
+  if (!first) { showToast('Add a note first'); return null; }
+  first.focus();
+  lastFocusedNote = first;
+  return first;
+}
+
+function nbInsertBullet() {
+  const note = nbGetNote(); if (!note) return;
+  note.focus();
+  const lis = nbGetSelectedLis();
+  if (lis.length) {
+    nbSetListType(lis, 'UL', '');
+  } else {
+    nbCreateListAtCursor('ul', null);
+  }
+  clearTimeout(nbSaveTimer);
+  nbSaveTimer = setTimeout(() => saveAllNotes(currentNoteSection), 400);
+}
+
+function nbInsertNumbered() {
+  const note = nbGetNote(); if (!note) return;
+  note.focus();
+  const lis = nbGetSelectedLis();
+  if (lis.length) {
+    nbSetListType(lis, 'OL', '');
+  } else {
+    nbCreateListAtCursor('ol', null);
+  }
+  clearTimeout(nbSaveTimer);
+  nbSaveTimer = setTimeout(() => saveAllNotes(currentNoteSection), 400);
+}
+
+function nbInsertTodo() {
+  const note = nbGetNote(); if (!note) return;
+  note.focus();
+  const lis = nbGetSelectedLis();
+  if (lis.length) {
+    // If ALL selected lis are already todo, toggle them OFF to plain bullets
+    const allTodo = lis.every(li => li.parentElement && li.parentElement.classList.contains('nb-todo-list'));
+    nbSetListType(lis, 'UL', allTodo ? '' : 'nb-todo-list');
+  } else {
+    nbCreateListAtCursor('ul', 'nb-todo-list');
+  }
+  clearTimeout(nbSaveTimer);
+  nbSaveTimer = setTimeout(() => saveAllNotes(currentNoteSection), 400);
+}
+
+// Legacy shim (kept so nothing calling nbSplitLiToType breaks)
+function nbSplitLiToType(li, newClass) {
+  nbSetListType([li], 'UL', newClass || '');
+}
+
 
 function placeCursorEnd(el){try{const r=document.createRange(),s=window.getSelection();r.selectNodeContents(el);r.collapse(false);s.removeAllRanges();s.addRange(r);}catch(e){}}
 function placeCursorStart(el){try{const r=document.createRange(),s=window.getSelection();r.setStart(el,0);r.collapse(true);s.removeAllRanges();s.addRange(r);}catch(e){}}
